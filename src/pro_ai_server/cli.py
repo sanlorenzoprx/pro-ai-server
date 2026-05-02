@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import typer
 from rich.console import Console
 
+from pro_ai_server.adb import select_adb_device_from_output
 from pro_ai_server.continue_config import exposure_warnings, write_continue_config
 from pro_ai_server.diagnostics import build_diagnostics_report
 from pro_ai_server.hardware import (
@@ -16,6 +17,7 @@ from pro_ai_server.hardware import (
 )
 from pro_ai_server.ide import detect_ide_clis
 from pro_ai_server.models import model_plan_for_profile, model_plan_for_ram
+from pro_ai_server.script_delivery import build_script_delivery_plan
 from pro_ai_server.termux_scripts import generate_termux_scripts, write_termux_scripts
 
 app = typer.Typer(help="Pro AI Server: Android phone local AI server manager.")
@@ -79,15 +81,19 @@ def run_command(command: list[str]) -> str:
     return result.stdout.strip()
 
 
-def connected_device_serial(devices_output: str) -> str | None:
-    for line in devices_output.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("List of devices"):
-            continue
-        parts = stripped.split()
-        if len(parts) >= 2 and parts[1] == "device":
-            return parts[0]
-    return None
+def adb_command(adb: str, args: list[str], serial: str | None = None) -> list[str]:
+    if serial:
+        return [adb, "-s", serial, *args]
+    return [adb, *args]
+
+
+def select_device_serial(adb: str, requested_serial: str | None = None) -> str:
+    devices = run_command([adb, "devices"])
+    selection = select_adb_device_from_output(devices, serial=requested_serial)
+    if selection.ok and selection.selected:
+        return selection.selected.serial
+
+    raise ValueError(selection.error or "Unable to select an ADB device.")
 
 
 def select_model_profile(ram_gb: float) -> ModelProfile:
@@ -137,7 +143,7 @@ def doctor() -> None:
 
 
 @app.command()
-def scan() -> None:
+def scan(serial: str | None = typer.Option(None, help="ADB device serial to use when multiple phones are connected.")) -> None:
     """Scan connected Android phone over ADB."""
     adb = resolve_adb()
     if not adb:
@@ -145,23 +151,22 @@ def scan() -> None:
         raise typer.Exit(code=1)
 
     try:
-        devices = run_command([adb, "devices"])
-        serial = connected_device_serial(devices)
-        if not serial:
-            console.print(devices)
-            console.print("[red]No connected authorized Android device found.[/red]")
-            raise typer.Exit(code=1)
+        selected_serial = select_device_serial(adb, serial)
 
-        meminfo = run_command([adb, "shell", "cat", "/proc/meminfo"])
-        storage = run_command([adb, "shell", "df", "-k", "/data"])
-        abi = run_command([adb, "shell", "getprop", "ro.product.cpu.abi"])
-        android_version = run_command([adb, "shell", "getprop", "ro.build.version.release"])
-        manufacturer = run_command([adb, "shell", "getprop", "ro.product.manufacturer"])
-        model = run_command([adb, "shell", "getprop", "ro.product.model"])
-        battery = parse_battery_dump(run_command([adb, "shell", "dumpsys", "battery"]))
+        meminfo = run_command(adb_command(adb, ["shell", "cat", "/proc/meminfo"], selected_serial))
+        storage = run_command(adb_command(adb, ["shell", "df", "-k", "/data"], selected_serial))
+        abi = run_command(adb_command(adb, ["shell", "getprop", "ro.product.cpu.abi"], selected_serial))
+        android_version = run_command(
+            adb_command(adb, ["shell", "getprop", "ro.build.version.release"], selected_serial)
+        )
+        manufacturer = run_command(
+            adb_command(adb, ["shell", "getprop", "ro.product.manufacturer"], selected_serial)
+        )
+        model = run_command(adb_command(adb, ["shell", "getprop", "ro.product.model"], selected_serial))
+        battery = parse_battery_dump(run_command(adb_command(adb, ["shell", "dumpsys", "battery"], selected_serial)))
 
         profile = assess_device_profile(
-            serial=serial,
+            serial=selected_serial,
             manufacturer=manufacturer,
             model=model,
             android_version=android_version,
@@ -256,7 +261,47 @@ def configure_continue(
 
 
 @app.command()
-def tunnel() -> None:
+def push_scripts(
+    generated_termux_dir: Path = typer.Option(
+        Path("generated") / "termux",
+        help="Local generated Termux script directory to push.",
+    ),
+    remote_home: str = typer.Option(
+        "/data/data/com.termux/files/home",
+        help="Remote Termux home directory.",
+    ),
+    serial: str | None = typer.Option(None, help="ADB device serial to use when multiple phones are connected."),
+) -> None:
+    """Push generated Termux scripts to the selected phone with adb push."""
+    adb = resolve_adb()
+    if not adb:
+        console.print("[red]adb not found. Release builds should include bundled platform-tools.[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        selected_serial = select_device_serial(adb, serial)
+        plan = build_script_delivery_plan(generated_termux_dir, remote_home, selected_serial)
+        run_command(adb_command(adb, ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts"], selected_serial))
+        for command in plan.commands:
+            run_command([adb, *list(command[1:])])
+    except CommandError as exc:
+        console.print("[red]ADB script push failed.[/red]")
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"[green]Pushed Termux scripts to device {selected_serial}.[/green]")
+    console.print("Run these inside Termux:")
+    for command in plan.post_push_termux_commands:
+        console.print(f"  {command}")
+    for instruction in plan.instructions:
+        console.print(f"[yellow]Note:[/yellow] {instruction}")
+
+
+@app.command()
+def tunnel(serial: str | None = typer.Option(None, help="ADB device serial to use when multiple phones are connected.")) -> None:
     """Create USB tunnel from host localhost:11434 to phone Ollama port."""
     adb = resolve_adb()
     if not adb:
@@ -264,13 +309,17 @@ def tunnel() -> None:
         raise typer.Exit(code=1)
 
     try:
-        output = run_command([adb, "reverse", "tcp:11434", "tcp:11434"])
+        selected_serial = select_device_serial(adb, serial)
+        output = run_command(adb_command(adb, ["reverse", "tcp:11434", "tcp:11434"], selected_serial))
     except CommandError as exc:
         console.print("[red]ADB reverse tunnel failed.[/red]")
         console.print(str(exc))
         raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
 
-    console.print("[green]ADB reverse tunnel requested for port 11434.[/green]")
+    console.print(f"[green]ADB reverse tunnel requested for device {selected_serial} on port 11434.[/green]")
     if output:
         console.print(output)
 

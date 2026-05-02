@@ -59,6 +59,8 @@ def test_tunnel_reports_failure_when_adb_reverse_fails(monkeypatch):
     runner = CliRunner()
 
     def fake_run(command, capture_output, text):
+        if command == ["adb", "devices"]:
+            return subprocess.CompletedProcess(command, 0, stdout="List of devices attached\nABC123\tdevice\n", stderr="")
         return subprocess.CompletedProcess(command, 1, stdout="", stderr="no devices/emulators found")
 
     monkeypatch.setattr(cli, "resolve_adb", lambda: "adb")
@@ -70,3 +72,69 @@ def test_tunnel_reports_failure_when_adb_reverse_fails(monkeypatch):
     assert "ADB reverse tunnel failed" in result.output
     assert "no devices/emulators found" in result.output
     assert "ADB reverse tunnel requested" not in result.output
+
+
+def test_tunnel_uses_requested_serial(monkeypatch):
+    runner = CliRunner()
+    commands = []
+
+    def fake_run(command, capture_output, text):
+        commands.append(command)
+        if command == ["adb", "devices"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                stdout="List of devices attached\nABC123\tdevice\nDEF456\tdevice\n",
+                stderr="",
+            )
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(cli, "resolve_adb", lambda: "adb")
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(cli.app, ["tunnel", "--serial", "DEF456"])
+
+    assert result.exit_code == 0
+    assert ["adb", "-s", "DEF456", "reverse", "tcp:11434", "tcp:11434"] in commands
+
+
+def test_tunnel_requires_serial_when_multiple_devices_are_connected(monkeypatch):
+    runner = CliRunner()
+
+    def fake_run(command, capture_output, text):
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout="List of devices attached\nABC123\tdevice\nDEF456\tdevice\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(cli, "resolve_adb", lambda: "adb")
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(cli.app, ["tunnel"])
+
+    assert result.exit_code == 1
+    assert "Multiple authorized ADB devices found" in result.output
+
+
+def test_push_scripts_executes_delivery_plan_with_selected_serial(monkeypatch, tmp_path):
+    runner = CliRunner()
+    commands = []
+
+    def fake_run(command, capture_output, text):
+        commands.append(command)
+        if command == ["adb", "devices"]:
+            return subprocess.CompletedProcess(command, 0, stdout="List of devices attached\nABC123\tdevice\n", stderr="")
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(cli, "resolve_adb", lambda: "adb")
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(cli.app, ["push-scripts", "--generated-termux-dir", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert ["adb", "-s", "ABC123", "shell", "mkdir", "-p", "/data/data/com.termux/files/home/.shortcuts"] in commands
+    assert ["adb", "-s", "ABC123", "push", str(tmp_path / "bootstrap.sh"), "/data/data/com.termux/files/home/bootstrap.sh"] in commands
+    assert ["adb", "-s", "ABC123", "shell", "chmod", "+x", "/data/data/com.termux/files/home/bootstrap.sh"] in commands
+    assert "~/bootstrap.sh" in result.output
