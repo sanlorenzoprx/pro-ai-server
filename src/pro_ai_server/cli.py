@@ -18,19 +18,40 @@ class ModelProfile:
     note: str
 
 
+class CommandError(RuntimeError):
+    def __init__(self, command: list[str], returncode: int, stdout: str, stderr: str) -> None:
+        self.command = command
+        self.returncode = returncode
+        self.stdout = stdout.strip()
+        self.stderr = stderr.strip()
+        message = self.stderr or self.stdout or f"Command failed with exit code {returncode}."
+        super().__init__(message)
+
+
+def package_root() -> Path:
+    return Path(__file__).resolve().parent
+
+
 def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def bundled_adb_candidates() -> tuple[Path, ...]:
+    relative_path = Path("embedded-tools") / "windows" / "platform-tools" / "adb.exe"
+    return (
+        package_root() / relative_path,
+        project_root() / relative_path,
+    )
+
+
 def bundled_adb_path() -> Path:
-    root = project_root()
-    return root / "embedded-tools" / "windows" / "platform-tools" / "adb.exe"
+    return bundled_adb_candidates()[0]
 
 
 def resolve_adb() -> str | None:
-    bundled = bundled_adb_path()
-    if bundled.exists():
-        return str(bundled)
+    for bundled in bundled_adb_candidates():
+        if bundled.exists():
+            return str(bundled)
 
     system_adb = shutil.which("adb")
     if system_adb:
@@ -42,7 +63,7 @@ def resolve_adb() -> str | None:
 def run_command(command: list[str]) -> str:
     result = subprocess.run(command, capture_output=True, text=True)
     if result.returncode != 0:
-        return result.stderr.strip()
+        raise CommandError(command, result.returncode, result.stdout, result.stderr)
     return result.stdout.strip()
 
 
@@ -133,7 +154,13 @@ def tunnel() -> None:
         console.print("[red]adb not found. Release builds should include bundled platform-tools.[/red]")
         raise typer.Exit(code=1)
 
-    output = run_command([adb, "reverse", "tcp:11434", "tcp:11434"])
+    try:
+        output = run_command([adb, "reverse", "tcp:11434", "tcp:11434"])
+    except CommandError as exc:
+        console.print("[red]ADB reverse tunnel failed.[/red]")
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+
     console.print("[green]ADB reverse tunnel requested for port 11434.[/green]")
     if output:
         console.print(output)
