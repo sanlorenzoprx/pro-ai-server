@@ -8,7 +8,7 @@ from rich.console import Console
 
 from pro_ai_server.adb import select_adb_device_from_output
 from pro_ai_server.continue_config import exposure_warnings, write_continue_config
-from pro_ai_server.diagnostics import build_diagnostics_report
+from pro_ai_server.diagnostics import build_diagnostics_report, write_diagnostics_report
 from pro_ai_server.hardware import (
     assess_device_profile,
     parse_battery_dump,
@@ -17,7 +17,9 @@ from pro_ai_server.hardware import (
 )
 from pro_ai_server.ide import detect_ide_clis
 from pro_ai_server.models import model_plan_for_profile, model_plan_for_ram
+from pro_ai_server.packaging import validate_windows_platform_tools_layouts
 from pro_ai_server.script_delivery import build_script_delivery_plan
+from pro_ai_server.setup_workflow import plan_setup_workflow
 from pro_ai_server.termux_scripts import generate_termux_scripts, write_termux_scripts
 
 app = typer.Typer(help="Pro AI Server: Android phone local AI server manager.")
@@ -261,6 +263,98 @@ def configure_continue(
 
 
 @app.command()
+def setup(
+    mode: str = typer.Option("usb", help="Connection mode: usb, lan, or tailscale."),
+    host: str | None = typer.Option(None, help="Host or IP for lan/tailscale modes."),
+    profile_name: str | None = typer.Option(None, "--profile", help="Model profile to use."),
+    ram_gb: float | None = typer.Option(None, help="Optional RAM value used to select a profile."),
+    configure_continue_config: bool = typer.Option(True, "--continue/--no-continue", help="Plan/write Continue config."),
+    create_usb_tunnel: bool | None = typer.Option(None, "--tunnel/--no-tunnel", help="Plan/create USB tunnel."),
+    push: bool = typer.Option(False, "--push-scripts", help="Plan/push generated scripts to the phone."),
+    execute: bool = typer.Option(False, help="Execute the planned local/device actions."),
+    yes: bool = typer.Option(False, "--yes", help="Confirm setup actions that write config or expose network mode."),
+    output_dir: Path = typer.Option(Path("."), help="Directory where generated/termux will be written."),
+    remote_home: str = typer.Option("/data/data/com.termux/files/home", help="Remote Termux home directory."),
+    serial: str | None = typer.Option(None, help="ADB device serial to use when multiple phones are connected."),
+) -> None:
+    """Plan or execute the guided MVP setup workflow."""
+    try:
+        plan = plan_setup_workflow(
+            mode=mode,
+            host=host,
+            ram_gb=ram_gb,
+            profile=profile_name,
+            configure_continue=configure_continue_config,
+            create_usb_tunnel=create_usb_tunnel,
+            push_scripts=push,
+            generated_termux_dir=output_dir / "generated" / "termux",
+            remote_termux_home=remote_home,
+            serial=serial,
+        )
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"[bold]Setup plan[/bold]: {plan.summary}")
+    for warning in plan.warnings:
+        console.print(f"[yellow]Warning:[/yellow] {warning}")
+    for index, step in enumerate(plan.steps, start=1):
+        console.print(f"{index}. [bold]{step.title}[/bold] - {step.detail}")
+        for note in step.notes:
+            console.print(f"   Note: {note}")
+
+    if not execute:
+        console.print("Plan only. Re-run with --execute --yes to perform write/device actions.")
+        return
+
+    if (plan.requires_confirmation or configure_continue_config) and not yes:
+        console.print("[red]Refusing to execute without --yes because setup writes config or changes exposure mode.[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        bundle = generate_termux_scripts(
+            plan.model_plan.chat_model,
+            plan.model_plan.autocomplete_model,
+            mode=plan.mode,
+        )
+        written = write_termux_scripts(bundle, root=output_dir)
+        console.print(f"[green]Generated {len(written)} Termux files.[/green]")
+
+        if configure_continue_config:
+            result = write_continue_config(plan.model_plan, mode=plan.mode, host=plan.host)
+            console.print(f"[green]Wrote Continue config:[/green] {result.config_path}")
+            if result.backup_path:
+                console.print(f"Backup: {result.backup_path}")
+
+        if push or (create_usb_tunnel is not False and plan.mode == "usb"):
+            adb = resolve_adb()
+            if not adb:
+                console.print("[red]adb not found. Release builds should include bundled platform-tools.[/red]")
+                raise typer.Exit(code=1)
+            selected_serial = select_device_serial(adb, serial)
+
+            if push:
+                delivery_plan = build_script_delivery_plan(output_dir / "generated" / "termux", remote_home, selected_serial)
+                run_command(
+                    adb_command(adb, ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts"], selected_serial)
+                )
+                for command in delivery_plan.commands:
+                    run_command([adb, *list(command[1:])])
+                console.print(f"[green]Pushed Termux scripts to device {selected_serial}.[/green]")
+                console.print("Run these inside Termux:")
+                for command in delivery_plan.post_push_termux_commands:
+                    console.print(f"  {command}")
+
+            if create_usb_tunnel is not False and plan.mode == "usb":
+                run_command(adb_command(adb, ["reverse", "tcp:11434", "tcp:11434"], selected_serial))
+                console.print(f"[green]ADB reverse tunnel requested for device {selected_serial}.[/green]")
+    except CommandError as exc:
+        console.print("[red]Setup failed while running an external command.[/red]")
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+
+
+@app.command()
 def push_scripts(
     generated_termux_dir: Path = typer.Option(
         Path("generated") / "termux",
@@ -325,10 +419,24 @@ def tunnel(serial: str | None = typer.Option(None, help="ADB device serial to us
 
 
 @app.command()
-def diagnose() -> None:
+def diagnose(output: Path | None = typer.Option(None, help="Optional file path for the diagnostics report.")) -> None:
     """Print host, phone, and local Ollama diagnostics."""
-    report = build_diagnostics_report(resolve_adb()).text
-    console.print(report)
+    report = build_diagnostics_report(resolve_adb())
+    console.print(report.text)
+    if output:
+        written = write_diagnostics_report(report, output)
+        console.print(f"[green]Wrote diagnostics report:[/green] {written}")
+
+
+@app.command()
+def validate_platform_tools(root: Path = typer.Option(Path("."), help="Repository root to validate.")) -> None:
+    """Validate bundled Windows Platform Tools ADB runtime files."""
+    result = validate_windows_platform_tools_layouts(root)
+    console.print(result.message)
+    console.print(f"Source tree: {result.source_tree.message}")
+    console.print(f"Packaged: {result.packaged.message}")
+    if not result.ok:
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,11 @@
-from pro_ai_server.diagnostics import build_diagnostics_report, redact_sensitive_paths
+from pro_ai_server.diagnostics import (
+    build_diagnostics_report,
+    redact_sensitive_paths,
+    summarize_battery_diagnostic,
+    summarize_free_storage_diagnostic,
+    summarize_ram_diagnostic,
+    write_diagnostics_report,
+)
 
 
 def test_diagnostics_report_includes_host_phone_and_server_sections():
@@ -19,8 +26,19 @@ def test_diagnostics_report_includes_host_phone_and_server_sections():
         ): "15",
         ("C:\\Users\\Hector\\tools\\adb.exe", "shell", "getprop", "ro.product.cpu.abi"): "arm64-v8a",
         ("C:\\Users\\Hector\\tools\\adb.exe", "shell", "cat", "/proc/meminfo"): "MemTotal: 8023456 kB",
-        ("C:\\Users\\Hector\\tools\\adb.exe", "shell", "df", "-k", "/data"): "/data 100 40 60",
-        ("C:\\Users\\Hector\\tools\\adb.exe", "shell", "dumpsys", "battery"): "level: 88\nAC powered: true",
+        (
+            "C:\\Users\\Hector\\tools\\adb.exe",
+            "shell",
+            "df",
+            "-k",
+            "/data",
+        ): "Filesystem 1K-blocks Used Available Use% Mounted on\n/dev/block/dm-1 120000000 40000000 80000000 34% /data",
+        (
+            "C:\\Users\\Hector\\tools\\adb.exe",
+            "shell",
+            "dumpsys",
+            "battery",
+        ): "level: 88\ntemperature: 317\nplugged: 1\nstatus: 2",
         ("C:\\Users\\Hector\\tools\\adb.exe", "reverse", "--list"): "ABC123 tcp:11434 tcp:11434",
         ("curl", "--silent", "--show-error", "http://localhost:11434/api/tags"): '{"models":[]}',
     }
@@ -43,6 +61,12 @@ def test_diagnostics_report_includes_host_phone_and_server_sections():
     assert "Google" in report
     assert "Pixel 6" in report
     assert "arm64-v8a" in report
+    assert "RAM: 7.65 GB" in report
+    assert "Free storage: 76.29 GB" in report
+    assert "Battery: level 88%; temperature 31.7 C; charging yes" in report
+    assert "MemTotal:" not in report
+    assert "Filesystem 1K-blocks" not in report
+    assert "temperature: 317" not in report
     assert "ABC123 tcp:11434 tcp:11434" in report
     assert '{"models":[]}' in report
     assert "C:\\Users\\Hector" not in report
@@ -81,6 +105,22 @@ def test_diagnostics_report_handles_missing_adb_path():
 
     assert "ADB path: not found" in report
     assert "No ADB path available" in report
+
+
+def test_device_diagnostic_summaries_fall_back_to_raw_text():
+    assert summarize_ram_diagnostic("not meminfo") == "RAM: not meminfo"
+    assert summarize_free_storage_diagnostic("not df") == "Free storage: not df"
+    assert summarize_battery_diagnostic("not battery") == "Battery: not battery"
+
+
+def test_write_diagnostics_report_writes_utf8_text(tmp_path):
+    report = build_diagnostics_report(adb_path=None, command_runner=lambda _: "curl unavailable", which=lambda _: None)
+    output_path = tmp_path / "diagnostics.txt"
+
+    written_path = write_diagnostics_report(report, output_path)
+
+    assert written_path == output_path
+    assert output_path.read_text(encoding="utf-8") == report.text
 
 
 def test_redact_sensitive_paths():

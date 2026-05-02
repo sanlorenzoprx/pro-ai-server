@@ -8,8 +8,10 @@ import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from pro_ai_server import __version__
+from pro_ai_server.hardware import parse_battery_dump, parse_data_free_storage_gb, parse_meminfo_ram_gb
 
 
 IDE_COMMANDS = ("code", "cursor", "codium", "windsurf")
@@ -58,6 +60,47 @@ def _run_or_message(command: list[str], runner: CommandRunner) -> str:
         return f"ERROR: {exc}"
 
 
+def _format_gb(value: float) -> str:
+    return f"{value:.2f} GB"
+
+
+def summarize_ram_diagnostic(meminfo: str) -> str:
+    try:
+        return f"RAM: {_format_gb(parse_meminfo_ram_gb(meminfo))}"
+    except ValueError:
+        return f"RAM: {meminfo}"
+
+
+def summarize_free_storage_diagnostic(df_output: str) -> str:
+    try:
+        return f"Free storage: {_format_gb(parse_data_free_storage_gb(df_output))}"
+    except ValueError:
+        return f"Free storage: {df_output}"
+
+
+def summarize_battery_diagnostic(dumpsys_battery: str) -> str:
+    battery = parse_battery_dump(dumpsys_battery)
+    if all(value is None for value in battery.values()):
+        return f"Battery: {dumpsys_battery}"
+
+    level = _format_optional(battery["battery_level"], suffix="%")
+    temperature = _format_optional(battery["battery_temperature_c"], suffix=" C")
+    charging = _format_charging(battery["is_charging"])
+    return f"Battery: level {level}; temperature {temperature}; charging {charging}"
+
+
+def _format_optional(value: int | float | bool | None, *, suffix: str) -> str:
+    if value is None:
+        return "unknown"
+    return f"{value}{suffix}"
+
+
+def _format_charging(value: object) -> str:
+    if value is None:
+        return "unknown"
+    return "yes" if value is True else "no"
+
+
 def _connected_phone_present(adb_devices_output: str) -> bool:
     for line in adb_devices_output.splitlines():
         stripped = line.strip()
@@ -71,6 +114,12 @@ def _connected_phone_present(adb_devices_output: str) -> bool:
 
 def _section(title: str, lines: list[str]) -> str:
     return "\n".join([f"## {title}", *lines])
+
+
+def write_diagnostics_report(report: DiagnosticsReport, output_path: str | Path) -> Path:
+    path = Path(output_path)
+    path.write_text(report.text, encoding="utf-8")
+    return path
 
 
 def build_diagnostics_report(
@@ -104,17 +153,21 @@ def build_diagnostics_report(
         phone_lines.extend(devices.splitlines() or ["<no output>"])
 
         if _connected_phone_present(devices):
-            probes = [
+            simple_probes = [
                 ("Manufacturer", [adb_path, "shell", "getprop", "ro.product.manufacturer"]),
                 ("Model", [adb_path, "shell", "getprop", "ro.product.model"]),
                 ("Android version", [adb_path, "shell", "getprop", "ro.build.version.release"]),
                 ("ABI", [adb_path, "shell", "getprop", "ro.product.cpu.abi"]),
-                ("RAM", [adb_path, "shell", "cat", "/proc/meminfo"]),
-                ("Free storage", [adb_path, "shell", "df", "-k", "/data"]),
-                ("Battery", [adb_path, "shell", "dumpsys", "battery"]),
             ]
-            for label, command in probes:
+            for label, command in simple_probes:
                 phone_lines.append(f"{label}: {redact_sensitive_paths(_run_or_message(command, command_runner))}")
+
+            meminfo = _run_or_message([adb_path, "shell", "cat", "/proc/meminfo"], command_runner)
+            storage = _run_or_message([adb_path, "shell", "df", "-k", "/data"], command_runner)
+            battery = _run_or_message([adb_path, "shell", "dumpsys", "battery"], command_runner)
+            phone_lines.append(summarize_ram_diagnostic(redact_sensitive_paths(meminfo)))
+            phone_lines.append(summarize_free_storage_diagnostic(redact_sensitive_paths(storage)))
+            phone_lines.append(summarize_battery_diagnostic(redact_sensitive_paths(battery)))
         else:
             phone_lines.append("No phone connected or authorized.")
 
