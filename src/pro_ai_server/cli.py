@@ -17,6 +17,7 @@ from pro_ai_server.hardware import (
 )
 from pro_ai_server.ide import detect_ide_clis
 from pro_ai_server.models import model_plan_for_profile, model_plan_for_ram
+from pro_ai_server.ollama import assess_model_inventory, build_ollama_tags_command
 from pro_ai_server.packaging import validate_windows_platform_tools_layouts
 from pro_ai_server.release_validation import validate_release_layout
 from pro_ai_server.script_delivery import build_script_delivery_plan
@@ -312,6 +313,35 @@ def termux_check(
         if check.instruction:
             console.print(f"  Next: {check.instruction}")
     if not result.ok:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def server_check(
+    api_base: str = typer.Option("http://localhost:11434", help="Ollama API base URL."),
+    profile_name: str = typer.Option("professional", "--profile", help="Model profile to verify."),
+    ram_gb: float | None = typer.Option(None, help="Optional RAM value used to select a profile."),
+) -> None:
+    """Check Ollama /api/tags and required model inventory."""
+    plan = model_plan_for_ram(ram_gb) if ram_gb is not None else model_plan_for_profile(profile_name)
+    command = build_ollama_tags_command(api_base)
+    tags_output = run_optional_command(list(command))
+    inventory = assess_model_inventory(plan, tags_output)
+
+    console.print(f"Ollama API: {api_base.rstrip('/')}")
+    console.print(f"Profile: {plan.profile}")
+    if inventory.model_names:
+        console.print("Models:")
+        for model in inventory.model_names:
+            console.print(f"  {model}")
+    else:
+        console.print("Models: none detected")
+
+    for warning in inventory.warnings:
+        console.print(f"[yellow]Warning:[/yellow] {warning}")
+    for instruction in inventory.instructions:
+        console.print(f"Next: {instruction}")
+    if not inventory.ok:
         raise typer.Exit(code=1)
 
 

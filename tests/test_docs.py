@@ -37,7 +37,9 @@ def test_cli_workflow_documents_windows_first_flow_and_safety_claims():
     for command in (
         "pro-ai-server doctor",
         "pro-ai-server validate-platform-tools",
+        "pro-ai-server validate-release",
         "pro-ai-server scan --serial",
+        "pro-ai-server termux-check",
         "pro-ai-server generate-scripts",
         "pro-ai-server push-scripts",
         "pro-ai-server configure-continue --mode usb",
@@ -52,6 +54,7 @@ def test_cli_workflow_documents_windows_first_flow_and_safety_claims():
         "bundled adb",
         "fastboot is not used",
         "does not require `fastboot.exe`",
+        "no fastboot",
         "backs it up first",
         "termux:widget still requires manual installation",
         "lan mode exposes ollama",
@@ -61,3 +64,31 @@ def test_cli_workflow_documents_windows_first_flow_and_safety_claims():
         "adb reverse tcp:11434 tcp:11434",
     ):
         assert safety_claim in workflow
+
+
+def test_troubleshooting_documents_phone_setup_and_mvp_failure_modes():
+    troubleshooting = read_doc("docs/TROUBLESHOOTING.md")
+
+    for expected in (
+        "no device found",
+        "unauthorized",
+        "multiple devices require --serial",
+        "pro-ai-server termux-check",
+        "termux is missing",
+        "termux:api is missing",
+        "termux home is not initialized",
+        "ollama not responding on localhost:11434",
+        "missing models",
+        "continue backup",
+        "lan mode exposes ollama",
+        "tailscale hostname",
+        "100.x.x.x",
+        "bundled adb",
+        "android studio",
+        "pro-ai-server validate-platform-tools",
+        "pro-ai-server validate-release",
+        "no fastboot",
+        "--serial",
+        "termux:widget manual placement",
+    ):
+        assert expected in troubleshooting

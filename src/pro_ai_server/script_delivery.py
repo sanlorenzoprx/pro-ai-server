@@ -3,13 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from pro_ai_server.termux_scripts import DEFAULT_SCRIPT_DIR, WIDGET_SHORTCUT_PATH
+from pro_ai_server.termux_scripts import DEFAULT_SCRIPT_DIR, DEBIAN_OLLAMA_SETUP_SCRIPT, WIDGET_SHORTCUT_PATH
 
 
 Command = tuple[str, ...]
 
 EXPECTED_TERMUX_SCRIPT_PATHS: tuple[Path, ...] = (
     Path("bootstrap.sh"),
+    Path(DEBIAN_OLLAMA_SETUP_SCRIPT),
     Path("start-pro-ai-server.sh"),
     Path("install-models.sh"),
     WIDGET_SHORTCUT_PATH,
@@ -19,6 +20,7 @@ EXPECTED_TERMUX_SCRIPT_PATHS: tuple[Path, ...] = (
 
 EXECUTABLE_TERMUX_SCRIPT_PATHS: tuple[Path, ...] = (
     Path("bootstrap.sh"),
+    Path(DEBIAN_OLLAMA_SETUP_SCRIPT),
     Path("start-pro-ai-server.sh"),
     Path("install-models.sh"),
     WIDGET_SHORTCUT_PATH,

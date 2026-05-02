@@ -139,3 +139,44 @@ def test_validate_release_reports_issues(monkeypatch, tmp_path):
     assert result.exit_code == 1
     assert "Release validation failed" in result.output
     assert "missing-ci-workflow" in result.output
+
+
+def test_server_check_reports_missing_models(monkeypatch):
+    runner = CliRunner()
+
+    def fake_run(command, capture_output, text):
+        import subprocess
+
+        assert command == ["curl", "--silent", "--show-error", "http://localhost:11434/api/tags"]
+        return subprocess.CompletedProcess(command, 0, stdout='{"models":[{"name":"qwen2.5-coder:3b"}]}', stderr="")
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(cli.app, ["server-check", "--profile", "professional"])
+
+    assert result.exit_code == 1
+    assert "qwen2.5-coder:3b" in result.output
+    assert "qwen2.5-coder:1.5b-base" in result.output
+    assert "ollama pull qwen2.5-coder:1.5b-base" in result.output
+
+
+def test_server_check_accepts_custom_api_base(monkeypatch):
+    runner = CliRunner()
+
+    def fake_run(command, capture_output, text):
+        import subprocess
+
+        assert command == ["curl", "--silent", "--show-error", "http://pro-ai-phone:11434/api/tags"]
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout='{"models":[{"name":"qwen2.5-coder:3b"},{"name":"qwen2.5-coder:1.5b-base"}]}',
+            stderr="",
+        )
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(cli.app, ["server-check", "--api-base", "http://pro-ai-phone:11434"])
+
+    assert result.exit_code == 0
+    assert "Ollama API: http://pro-ai-phone:11434" in result.output

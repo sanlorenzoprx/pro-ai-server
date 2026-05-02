@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from pro_ai_server.termux_scripts import (
+    generate_debian_ollama_setup_script,
     generate_start_script,
     generate_termux_scripts,
     generate_widget_shortcut_script,
@@ -18,9 +19,15 @@ def test_generates_deterministic_termux_scripts_for_usb_mode():
     )
 
     assert bundle.ollama_host == "127.0.0.1:11434"
-    assert Path("generated/termux/bootstrap.sh") in bundle.files
-    assert Path("generated/termux/start-pro-ai-server.sh") in bundle.files
-    assert Path("generated/termux/install-models.sh") in bundle.files
+    assert list(bundle.files) == [
+        Path("generated/termux/bootstrap.sh"),
+        Path("generated/termux/setup-ollama-debian.sh"),
+        Path("generated/termux/start-pro-ai-server.sh"),
+        Path("generated/termux/install-models.sh"),
+        Path("generated/termux/.shortcuts/Start Pro AI Server"),
+        Path("generated/termux/ANDROID_OPTIMIZATION_CHECKLIST.txt"),
+        Path("generated/termux/TERMUX_WIDGET_INSTRUCTIONS.txt"),
+    ]
     assert bundle.files[Path("generated/termux/bootstrap.sh")] == (
         "#!/data/data/com.termux/files/usr/bin/bash\n"
         "set -euo pipefail\n"
@@ -28,10 +35,29 @@ def test_generates_deterministic_termux_scripts_for_usb_mode():
         "pkg update -y\n"
         "pkg install -y proot-distro curl termux-api\n"
         "proot-distro install debian\n"
+        "\n"
+        'echo "Debian is installed."\n'
+        'echo "Next, install Ollama inside Debian with:"\n'
+        'echo "  proot-distro login debian -- bash /data/data/com.termux/files/home/setup-ollama-debian.sh"\n'
+        'echo "Then start the server with:"\n'
+        'echo "  ~/start-pro-ai-server.sh"\n'
     )
+    assert bundle.files[Path("generated/termux/setup-ollama-debian.sh")] == generate_debian_ollama_setup_script()
     assert "export OLLAMA_HOST=127.0.0.1:11434; ollama serve" in bundle.files[
         Path("generated/termux/start-pro-ai-server.sh")
     ]
+
+
+def test_bootstrap_and_debian_setup_include_real_ollama_install_path():
+    bundle = generate_termux_scripts("chat", "autocomplete")
+    bootstrap = bundle.files[Path("generated/termux/bootstrap.sh")]
+    debian_setup = bundle.files[Path("generated/termux/setup-ollama-debian.sh")]
+
+    assert "pkg install -y proot-distro curl termux-api" in bootstrap
+    assert "proot-distro install debian" in bootstrap
+    assert "proot-distro login debian -- bash /data/data/com.termux/files/home/setup-ollama-debian.sh" in bootstrap
+    assert "apt-get install -y curl ca-certificates" in debian_setup
+    assert "curl -fsSL https://ollama.com/install.sh | sh" in debian_setup
 
 
 def test_start_script_binds_lan_and_tailscale_to_all_interfaces():
@@ -43,9 +69,11 @@ def test_start_script_checks_termux_api_and_takes_wake_lock():
     script = generate_start_script("usb")
 
     assert "command -v termux-wake-lock" in script
-    assert "Missing termux-api" in script
+    assert "Missing termux-wake-lock from Termux:API." in script
     assert "pkg install termux-api" in script
+    assert "Termux:API Android app" in script
     assert "termux-wake-lock" in script
+    assert "Unable to acquire wake lock" in script
 
 
 def test_install_models_deduplicates_model_pulls():
@@ -72,6 +100,15 @@ def test_android_optimization_checklist_does_not_guarantee_oem_behavior():
     assert "Set battery usage to Unrestricted." in checklist
     assert "cannot guarantee" in checklist
     assert "OEM" in checklist
+
+
+def test_generated_scripts_do_not_claim_to_automate_oem_battery_restrictions():
+    bundle = generate_termux_scripts("chat", "autocomplete")
+    generated_text = "\n".join(bundle.files.values()).lower()
+
+    assert "disable battery optimization" not in generated_text
+    assert "automatically set battery" not in generated_text
+    assert "bypass oem" not in generated_text
 
 
 def test_write_termux_scripts_creates_files(tmp_path):

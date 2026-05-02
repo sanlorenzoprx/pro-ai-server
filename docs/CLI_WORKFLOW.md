@@ -26,7 +26,17 @@ This validates the Windows ADB runtime layouts and required files:
 
 The MVP does not require `fastboot.exe`.
 
-## 3. Scan the Phone
+Run this after updating bundled platform-tools, before publishing a release, or when `doctor` reports that ADB is missing. There is no fastboot requirement for the MVP.
+
+## 3. Validate Release Readiness
+
+```powershell
+pro-ai-server validate-release
+```
+
+Run `validate-release` before tagging or handing off a Windows release build. It checks that bundled ADB runtime files are present in the source and packaged layouts, that embedded tool package data is included, and that CI still runs the required gates.
+
+## 4. Scan the Phone
 
 Connect the phone over USB, enable USB debugging, accept the Android authorization prompt, then run:
 
@@ -42,7 +52,21 @@ pro-ai-server scan --serial <device-serial>
 
 The scan reads Android version, ABI, RAM, storage, battery, and model information over ADB, then recommends a model profile.
 
-## 4. Generate Termux Scripts
+## 5. Check Termux Readiness
+
+```powershell
+pro-ai-server termux-check
+```
+
+Run `termux-check` after the phone is visible to ADB and before pushing scripts. It verifies that Termux is installed, Termux:API is installed, and the Termux home directory has been initialized by opening Termux at least once.
+
+With multiple devices:
+
+```powershell
+pro-ai-server termux-check --serial <device-serial>
+```
+
+## 6. Generate Termux Scripts
 
 ```powershell
 pro-ai-server generate-scripts --mode usb
@@ -59,7 +83,7 @@ This writes inspectable files under `generated/termux`, including:
 
 USB mode binds Ollama to `127.0.0.1:11434`. LAN and Tailscale script modes bind Ollama to `0.0.0.0:11434`, which exposes the server beyond phone-local loopback.
 
-## 5. Push Scripts to Termux
+## 7. Push Scripts to Termux
 
 ```powershell
 pro-ai-server push-scripts
@@ -75,7 +99,7 @@ The CLI uses `adb push` to copy generated files to the Termux home directory and
 
 Termux:Widget still requires manual installation and placement: install Termux:Widget on Android, add the generated `Start Pro AI Server` shortcut to `~/.shortcuts`, then place the widget/shortcut on the Android home screen.
 
-## 6. Configure Continue
+## 8. Configure Continue
 
 USB is the default and safest MVP mode:
 
@@ -95,7 +119,7 @@ pro-ai-server configure-continue --mode tailscale --host 100.x.x.x
 
 LAN mode exposes Ollama to devices on the local network. Tailscale mode should use a private Tailscale hostname or `100.x.x.x` IP address.
 
-## 7. Create the USB Tunnel
+## 9. Create the USB Tunnel
 
 ```powershell
 pro-ai-server tunnel
@@ -115,7 +139,7 @@ adb reverse tcp:11434 tcp:11434
 
 After the tunnel is active, Continue can use `http://localhost:11434` from the Windows host while Ollama remains bound to phone-local loopback in USB mode.
 
-## 8. Guided Setup
+## 10. Guided Setup
 
 Plan mode is the default:
 
@@ -141,7 +165,7 @@ pro-ai-server setup --mode tailscale --host pro-ai-phone
 pro-ai-server setup --mode lan --host 192.168.1.50 --no-tunnel
 ```
 
-## 9. Capture Diagnostics
+## 11. Capture Diagnostics
 
 ```powershell
 pro-ai-server diagnose
