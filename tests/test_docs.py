@@ -92,3 +92,37 @@ def test_troubleshooting_documents_phone_setup_and_mvp_failure_modes():
         "termux:widget manual placement",
     ):
         assert expected in troubleshooting
+
+
+def test_release_doc_documents_windows_first_release_gates_and_smoke_flow():
+    release = read_doc("docs/RELEASE.md")
+
+    for expected in (
+        "pro-ai-server validate-release",
+        "pro-ai-server validate-platform-tools",
+        "pytest",
+        "ruff check .",
+        "pro-ai-server doctor",
+        "bundled adb",
+        "fastboot is not used",
+        "fastboot.exe",
+        "scripts/download-platform-tools.ps1",
+        "android studio",
+        "pro-ai-server generate-scripts",
+        "pro-ai-server setup",
+        "pro-ai-server diagnose --output",
+    ):
+        assert expected in release
+
+
+def test_ci_runs_release_validation_and_core_build_gates():
+    ci = read_doc(".github/workflows/ci.yml")
+
+    for expected in (
+        "python -m pip install -e \".[dev]\"",
+        "ruff check .",
+        "pytest",
+        "pro-ai-server validate-release",
+        "python -m pip wheel . --no-deps --wheel-dir dist",
+    ):
+        assert expected in ci

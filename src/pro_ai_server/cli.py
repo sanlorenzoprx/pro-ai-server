@@ -8,19 +8,20 @@ from rich.console import Console
 
 from pro_ai_server.adb import select_adb_device_from_output
 from pro_ai_server.continue_config import exposure_warnings, write_continue_config
-from pro_ai_server.diagnostics import build_diagnostics_report, write_diagnostics_report
-from pro_ai_server.hardware import (
-    assess_device_profile,
-    parse_battery_dump,
-    parse_data_free_storage_gb,
-    parse_meminfo_ram_gb,
+from pro_ai_server.device_scan import (
+    DeviceScanOutputs,
+    build_device_profile_from_scan_outputs,
+    build_device_scan_commands,
+    build_device_scan_summary_lines,
 )
+from pro_ai_server.diagnostics import build_diagnostics_report, write_diagnostics_report
 from pro_ai_server.ide import detect_ide_clis
 from pro_ai_server.models import model_plan_for_profile, model_plan_for_ram
 from pro_ai_server.ollama import assess_model_inventory, build_ollama_tags_command
 from pro_ai_server.packaging import validate_windows_platform_tools_layouts
 from pro_ai_server.release_validation import validate_release_layout
 from pro_ai_server.script_delivery import build_script_delivery_plan
+from pro_ai_server.setup_receipt import build_setup_receipt, render_setup_receipt
 from pro_ai_server.setup_workflow import plan_setup_workflow
 from pro_ai_server.termux_readiness import (
     assess_termux_readiness,
@@ -168,30 +169,18 @@ def scan(serial: str | None = typer.Option(None, help="ADB device serial to use 
 
     try:
         selected_serial = select_device_serial(adb, serial)
-
-        meminfo = run_command(adb_command(adb, ["shell", "cat", "/proc/meminfo"], selected_serial))
-        storage = run_command(adb_command(adb, ["shell", "df", "-k", "/data"], selected_serial))
-        abi = run_command(adb_command(adb, ["shell", "getprop", "ro.product.cpu.abi"], selected_serial))
-        android_version = run_command(
-            adb_command(adb, ["shell", "getprop", "ro.build.version.release"], selected_serial)
-        )
-        manufacturer = run_command(
-            adb_command(adb, ["shell", "getprop", "ro.product.manufacturer"], selected_serial)
-        )
-        model = run_command(adb_command(adb, ["shell", "getprop", "ro.product.model"], selected_serial))
-        battery = parse_battery_dump(run_command(adb_command(adb, ["shell", "dumpsys", "battery"], selected_serial)))
-
-        profile = assess_device_profile(
-            serial=selected_serial,
-            manufacturer=manufacturer,
-            model=model,
-            android_version=android_version,
-            abi=abi,
-            ram_gb=parse_meminfo_ram_gb(meminfo),
-            free_storage_gb=parse_data_free_storage_gb(storage),
-            battery_level=battery["battery_level"],
-            battery_temperature_c=battery["battery_temperature_c"],
-            is_charging=battery["is_charging"],
+        commands = build_device_scan_commands(adb, selected_serial)
+        profile = build_device_profile_from_scan_outputs(
+            selected_serial,
+            DeviceScanOutputs(
+                meminfo=run_command(list(commands.meminfo)),
+                storage=run_command(list(commands.storage)),
+                abi=run_command(list(commands.abi)),
+                android_version=run_command(list(commands.android_version)),
+                manufacturer=run_command(list(commands.manufacturer)),
+                model=run_command(list(commands.model)),
+                battery=run_command(list(commands.battery)),
+            ),
         )
     except CommandError as exc:
         console.print("[red]ADB scan failed.[/red]")
@@ -202,21 +191,11 @@ def scan(serial: str | None = typer.Option(None, help="ADB device serial to use 
         console.print(str(exc))
         raise typer.Exit(code=1) from exc
 
-    recommended = profile.recommended_profile
-    console.print(f"Serial: {profile.serial}")
-    console.print(f"Device: {profile.manufacturer} {profile.model}")
-    console.print(f"Android: {profile.android_version}")
-    console.print(f"ABI: {profile.abi}")
-    console.print(f"RAM: {profile.ram_gb:.2f} GB")
-    console.print(f"Free storage: {profile.free_storage_gb:.2f} GB")
-    console.print(f"Battery: {profile.battery_level if profile.battery_level is not None else 'unknown'}%")
-    console.print(f"Charging: {profile.is_charging if profile.is_charging is not None else 'unknown'}")
-    if recommended:
-        console.print(f"Recommended profile: [bold]{recommended.name}[/bold] ({recommended.status})")
-        console.print(f"Chat model: {recommended.chat_model}")
-        console.print(f"Autocomplete model: {recommended.autocomplete_model}")
-    for warning in profile.warnings:
-        console.print(f"[yellow]Warning:[/yellow] {warning}")
+    for line in build_device_scan_summary_lines(profile):
+        if line.startswith("Warning: "):
+            console.print(f"[yellow]{line}[/yellow]")
+        else:
+            console.print(line)
 
 
 @app.command()
@@ -395,6 +374,11 @@ def setup(
         raise typer.Exit(code=1)
 
     try:
+        continue_result = None
+        selected_serial = None
+        delivery_plan = None
+        tunnel_requested = False
+
         bundle = generate_termux_scripts(
             plan.model_plan.chat_model,
             plan.model_plan.autocomplete_model,
@@ -404,10 +388,10 @@ def setup(
         console.print(f"[green]Generated {len(written)} Termux files.[/green]")
 
         if configure_continue_config:
-            result = write_continue_config(plan.model_plan, mode=plan.mode, host=plan.host)
-            console.print(f"[green]Wrote Continue config:[/green] {result.config_path}")
-            if result.backup_path:
-                console.print(f"Backup: {result.backup_path}")
+            continue_result = write_continue_config(plan.model_plan, mode=plan.mode, host=plan.host)
+            console.print(f"[green]Wrote Continue config:[/green] {continue_result.config_path}")
+            if continue_result.backup_path:
+                console.print(f"Backup: {continue_result.backup_path}")
 
         if push or (create_usb_tunnel is not False and plan.mode == "usb"):
             adb = resolve_adb()
@@ -430,7 +414,19 @@ def setup(
 
             if create_usb_tunnel is not False and plan.mode == "usb":
                 run_command(adb_command(adb, ["reverse", "tcp:11434", "tcp:11434"], selected_serial))
+                tunnel_requested = True
                 console.print(f"[green]ADB reverse tunnel requested for device {selected_serial}.[/green]")
+        receipt = build_setup_receipt(
+            workflow_plan=plan,
+            continue_result=continue_result,
+            termux_bundle=bundle,
+            written_termux_paths=written,
+            delivery_plan=delivery_plan,
+            selected_device_serial=selected_serial,
+            pushed_scripts=push,
+            tunnel_requested=tunnel_requested,
+        )
+        console.print(render_setup_receipt(receipt))
     except CommandError as exc:
         console.print("[red]Setup failed while running an external command.[/red]")
         console.print(str(exc))

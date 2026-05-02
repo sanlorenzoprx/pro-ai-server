@@ -18,3 +18,7 @@ jobs:
         run: ruff check .
       - name: Test
         run: pytest
+      - name: Validate release
+        run: pro-ai-server validate-release
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps --wheel-dir dist
