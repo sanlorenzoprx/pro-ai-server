@@ -27,28 +27,25 @@ A developer can connect an Android phone, run Pro AI Server, and get:
 
 ## Current Baseline Status
 
-Already started in PR #1:
+This branch now contains the Python CLI MVP described by this baseline. The
+implemented surface includes:
 
-- Python CLI scaffold.
-- `doctor` command.
-- `profile` command for manual RAM-based model selection.
-- `scan` command placeholder.
-- `tunnel` command placeholder.
-- Bundled ADB planning.
-- Basic test structure.
+- Python CLI scaffold and tested command routing.
+- Bundled Windows ADB resolver with system ADB fallback.
+- Host `doctor` checks for Python, supported IDE CLIs, and ADB.
+- Real ADB hardware auto-assessment for RAM, storage, ABI, Android version,
+  battery, charging state, and device identity.
+- Hardware-aware model profile selection and model pull planning.
+- Inspectable Termux bootstrap, startup, model install, Android optimization,
+  and Termux:Widget helper script generation.
+- Continue `config.yaml` generation for USB, LAN, and Tailscale modes with
+  backup protection for existing configs.
+- Termux readiness, Ollama readiness, USB tunnel, setup workflow, setup
+  receipts, diagnostics, and release validation commands.
+- CI enforcement for linting, tests, release validation, and wheel builds.
 
-Not fully built yet:
-
-- Real ADB hardware auto-assessment.
-- Storage, ABI, battery, and thermal checks.
-- Termux bootstrap script generator.
-- `termux-wake-lock` startup script.
-- Continue `config.yaml` generator.
-- Existing Continue config backup.
-- Termux:Widget `.shortcuts` script.
-- Tailscale mode config.
-- Installer packaging.
-- CI enforcement.
+Deferred work should be tracked as new product requirements rather than as MVP
+gaps in this baseline. Fastboot remains out of scope for the MVP flow.
 
 ## Test-Driven Rule
 
