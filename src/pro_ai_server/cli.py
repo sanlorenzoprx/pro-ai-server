@@ -18,8 +18,14 @@ from pro_ai_server.hardware import (
 from pro_ai_server.ide import detect_ide_clis
 from pro_ai_server.models import model_plan_for_profile, model_plan_for_ram
 from pro_ai_server.packaging import validate_windows_platform_tools_layouts
+from pro_ai_server.release_validation import validate_release_layout
 from pro_ai_server.script_delivery import build_script_delivery_plan
 from pro_ai_server.setup_workflow import plan_setup_workflow
+from pro_ai_server.termux_readiness import (
+    assess_termux_readiness,
+    build_termux_package_info_command,
+    build_termux_readiness_commands,
+)
 from pro_ai_server.termux_scripts import generate_termux_scripts, write_termux_scripts
 
 app = typer.Typer(help="Pro AI Server: Android phone local AI server manager.")
@@ -81,6 +87,13 @@ def run_command(command: list[str]) -> str:
     if result.returncode != 0:
         raise CommandError(command, result.returncode, result.stdout, result.stderr)
     return result.stdout.strip()
+
+
+def run_optional_command(command: list[str]) -> str:
+    try:
+        return run_command(command)
+    except CommandError as exc:
+        return exc.stdout or exc.stderr
 
 
 def adb_command(adb: str, args: list[str], serial: str | None = None) -> list[str]:
@@ -263,6 +276,46 @@ def configure_continue(
 
 
 @app.command()
+def termux_check(
+    serial: str | None = typer.Option(None, help="ADB device serial to use when multiple phones are connected."),
+) -> None:
+    """Check Termux, Termux:API, and Termux home readiness on the phone."""
+    adb = resolve_adb()
+    if not adb:
+        console.print("[red]adb not found. Release builds should include bundled platform-tools.[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        selected_serial = select_device_serial(adb, serial)
+        readiness_outputs = [
+            run_optional_command([adb, *list(command[1:])])
+            for command in build_termux_readiness_commands(selected_serial)
+        ]
+        package_info = run_optional_command([adb, *list(build_termux_package_info_command(selected_serial)[1:])])
+    except CommandError as exc:
+        console.print("[red]ADB Termux readiness check failed.[/red]")
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    result = assess_termux_readiness(*readiness_outputs, package_info_output=package_info)
+    console.print(f"Device: {selected_serial}")
+    if result.version_hint:
+        console.print(f"Termux version: {result.version_hint}")
+    for check in result.checks:
+        status = "[green]OK[/green]" if check.ok else "[yellow]Needs attention[/yellow]"
+        console.print(f"{status} {check.name}")
+        if check.warning:
+            console.print(f"  Warning: {check.warning}")
+        if check.instruction:
+            console.print(f"  Next: {check.instruction}")
+    if not result.ok:
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def setup(
     mode: str = typer.Option("usb", help="Connection mode: usb, lan, or tailscale."),
     host: str | None = typer.Option(None, help="Host or IP for lan/tailscale modes."),
@@ -435,6 +488,18 @@ def validate_platform_tools(root: Path = typer.Option(Path("."), help="Repositor
     console.print(result.message)
     console.print(f"Source tree: {result.source_tree.message}")
     console.print(f"Packaged: {result.packaged.message}")
+    if not result.ok:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def validate_release(root: Path = typer.Option(Path("."), help="Repository root to validate.")) -> None:
+    """Validate release readiness: ADB files, package data, and CI gates."""
+    result = validate_release_layout(root)
+    console.print(result.summary)
+    for issue in result.issues:
+        path = f" ({issue.path})" if issue.path else ""
+        console.print(f"[red]{issue.code}[/red]: {issue.message}{path}")
     if not result.ok:
         raise typer.Exit(code=1)
 

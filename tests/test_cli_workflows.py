@@ -2,6 +2,7 @@ from typer.testing import CliRunner
 
 from pro_ai_server import cli
 from pro_ai_server.diagnostics import DiagnosticsReport
+from pro_ai_server.release_validation import ReleaseValidationIssue, ReleaseValidationResult
 
 
 def test_setup_prints_plan_without_executing_actions():
@@ -47,3 +48,94 @@ def test_validate_platform_tools_reports_missing_required_files(tmp_path):
     assert "one or more" in result.output
     assert "layouts" in result.output
     assert "adb.exe" in result.output
+
+
+def test_termux_check_reports_ready_phone(monkeypatch):
+    runner = CliRunner()
+    outputs = {
+        ("adb", "devices"): "List of devices attached\nABC123\tdevice\n",
+        ("adb", "-s", "ABC123", "shell", "pm", "path", "com.termux"): "package:/data/app/com.termux/base.apk",
+        ("adb", "-s", "ABC123", "shell", "pm", "path", "com.termux.api"): (
+            "package:/data/app/com.termux.api/base.apk"
+        ),
+        (
+            "adb",
+            "-s",
+            "ABC123",
+            "shell",
+            "test",
+            "-d",
+            "/data/data/com.termux/files/home",
+            "&&",
+            "echo",
+            "yes",
+            "||",
+            "echo",
+            "no",
+        ): "yes",
+        ("adb", "-s", "ABC123", "shell", "dumpsys", "package", "com.termux"): "versionName=0.118.1",
+    }
+
+    def fake_run(command, capture_output, text):
+        import subprocess
+
+        return subprocess.CompletedProcess(command, 0, stdout=outputs[tuple(command)], stderr="")
+
+    monkeypatch.setattr(cli, "resolve_adb", lambda: "adb")
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(cli.app, ["termux-check"])
+
+    assert result.exit_code == 0
+    assert "Device: ABC123" in result.output
+    assert "Termux version: 0.118.1" in result.output
+    assert "Termux:API installed" in result.output
+
+
+def test_termux_check_exits_nonzero_when_api_is_missing(monkeypatch):
+    runner = CliRunner()
+
+    def fake_run(command, capture_output, text):
+        import subprocess
+
+        if command == ["adb", "devices"]:
+            return subprocess.CompletedProcess(command, 0, stdout="List of devices attached\nABC123\tdevice\n", stderr="")
+        if command[-1] == "com.termux.api":
+            return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
+        if command[-1] == "com.termux":
+            return subprocess.CompletedProcess(command, 0, stdout="package:/data/app/com.termux/base.apk", stderr="")
+        if command[-4:] == ["||", "echo", "no"]:
+            return subprocess.CompletedProcess(command, 0, stdout="yes", stderr="")
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(cli, "resolve_adb", lambda: "adb")
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(cli.app, ["termux-check"])
+
+    assert result.exit_code == 1
+    assert "Termux:API is not installed" in result.output
+
+
+def test_validate_release_reports_issues(monkeypatch, tmp_path):
+    runner = CliRunner()
+
+    monkeypatch.setattr(
+        cli,
+        "validate_release_layout",
+        lambda _: ReleaseValidationResult(
+            issues=(
+                ReleaseValidationIssue(
+                    code="missing-ci-workflow",
+                    message="Missing GitHub Actions workflow.",
+                    path=tmp_path / ".github" / "workflows" / "ci.yml",
+                ),
+            )
+        ),
+    )
+
+    result = runner.invoke(cli.app, ["validate-release", "--root", str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert "Release validation failed" in result.output
+    assert "missing-ci-workflow" in result.output
