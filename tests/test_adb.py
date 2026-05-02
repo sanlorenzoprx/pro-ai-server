@@ -41,6 +41,20 @@ def test_resolve_adb_falls_back_to_system_adb(tmp_path, monkeypatch):
     assert cli.resolve_adb() == "system-adb"
 
 
+def test_resolve_adb_returns_none_when_bundled_and_system_adb_are_missing(tmp_path, monkeypatch):
+    package_dir = tmp_path / "site-packages" / "pro_ai_server"
+    package_dir.mkdir(parents=True)
+
+    monkeypatch.setattr(cli, "__file__", str(package_dir / "cli.py"))
+    monkeypatch.setattr(cli.shutil, "which", lambda _: None)
+
+    assert cli.resolve_adb() is None
+
+
+def test_cli_behavior_does_not_reference_fastboot():
+    assert "fastboot" not in cli.Path(cli.__file__).read_text(encoding="utf-8")
+
+
 def test_tunnel_reports_failure_when_adb_reverse_fails(monkeypatch):
     runner = CliRunner()
 
