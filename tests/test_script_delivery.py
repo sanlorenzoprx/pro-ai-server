@@ -38,6 +38,12 @@ def test_preserves_relative_paths_under_generated_termux_on_remote_device():
         str(Path("generated") / "termux" / ".shortcuts" / "Start Pro AI Server"),
         "/home/.shortcuts/Start Pro AI Server",
     ) in plan.commands
+    assert (
+        "adb",
+        "push",
+        str(Path("generated") / "termux" / ".shortcuts" / "icons" / "Start Pro AI Server.png"),
+        "/home/.shortcuts/icons/Start Pro AI Server.png",
+    ) in plan.commands
 
 
 def test_includes_serial_in_every_adb_command_when_provided():

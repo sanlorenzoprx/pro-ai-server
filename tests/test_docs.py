@@ -21,8 +21,10 @@ def test_readme_documents_current_mvp_cli_commands_and_bundled_adb_policy():
         "tunnel",
         "setup --execute --yes",
         "setup-tailscale",
+        "server-endpoints",
         "status",
         "diagnose --output",
+        "ui",
     ):
         assert command in readme
 
@@ -52,6 +54,7 @@ def test_cli_workflow_documents_windows_first_flow_and_safety_claims():
         "pro-ai-server setup-tailscale",
         "pro-ai-server server-endpoints",
         "pro-ai-server status",
+        "pro-ai-server ui",
         "pro-ai-server tunnel",
         "pro-ai-server setup",
         "pro-ai-server setup --execute --yes",
@@ -76,7 +79,7 @@ def test_cli_workflow_documents_windows_first_flow_and_safety_claims():
         "--android-apk",
         "concise readiness view",
         "127.0.0.1:11434",
-        "adb reverse tcp:11434 tcp:11434",
+        "adb forward tcp:11434 tcp:11434",
     ):
         assert safety_claim in workflow
 

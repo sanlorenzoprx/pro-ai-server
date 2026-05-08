@@ -25,6 +25,7 @@ def test_generates_deterministic_termux_scripts_for_usb_mode():
         Path("generated/termux/start-pro-ai-server.sh"),
         Path("generated/termux/install-models.sh"),
         Path("generated/termux/.shortcuts/Start Pro AI Server"),
+        Path("generated/termux/.shortcuts/icons/Start Pro AI Server.png"),
         Path("generated/termux/ANDROID_OPTIMIZATION_CHECKLIST.txt"),
         Path("generated/termux/TERMUX_WIDGET_INSTRUCTIONS.txt"),
     ]
@@ -88,6 +89,7 @@ def test_widget_shortcut_calls_start_script_and_instructions_are_generated():
     shortcut_path = Path("generated/termux/.shortcuts/Start Pro AI Server")
 
     assert bundle.files[shortcut_path] == generate_widget_shortcut_script()
+    assert isinstance(bundle.files[Path("generated/termux/.shortcuts/icons/Start Pro AI Server.png")], bytes)
     assert "~/start-pro-ai-server.sh" in bundle.files[shortcut_path]
     assert "Termux:Widget" in bundle.files[Path("generated/termux/TERMUX_WIDGET_INSTRUCTIONS.txt")]
     assert "manually" in bundle.files[Path("generated/termux/TERMUX_WIDGET_INSTRUCTIONS.txt")]
@@ -104,7 +106,7 @@ def test_android_optimization_checklist_does_not_guarantee_oem_behavior():
 
 def test_generated_scripts_do_not_claim_to_automate_oem_battery_restrictions():
     bundle = generate_termux_scripts("chat", "autocomplete")
-    generated_text = "\n".join(bundle.files.values()).lower()
+    generated_text = "\n".join(value for value in bundle.files.values() if isinstance(value, str)).lower()
 
     assert "disable battery optimization" not in generated_text
     assert "automatically set battery" not in generated_text

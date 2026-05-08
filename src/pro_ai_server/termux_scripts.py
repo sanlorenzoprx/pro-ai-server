@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path
 from typing import Mapping
 
@@ -10,6 +11,7 @@ USB_OLLAMA_HOST = "127.0.0.1:11434"
 NETWORK_OLLAMA_HOST = "0.0.0.0:11434"
 DEFAULT_SCRIPT_DIR = Path("generated") / "termux"
 WIDGET_SHORTCUT_PATH = Path(".shortcuts") / "Start Pro AI Server"
+WIDGET_ICON_PATH = Path(".shortcuts") / "icons" / "Start Pro AI Server.png"
 DEBIAN_OLLAMA_SETUP_SCRIPT = "setup-ollama-debian.sh"
 
 
@@ -17,7 +19,7 @@ DEBIAN_OLLAMA_SETUP_SCRIPT = "setup-ollama-debian.sh"
 class TermuxScriptBundle:
     mode: str
     ollama_host: str
-    files: Mapping[Path, str]
+    files: Mapping[Path, str | bytes]
 
 
 def ollama_host_for_mode(mode: str) -> str:
@@ -44,8 +46,10 @@ def android_battery_optimization_checklist() -> list[str]:
 def termux_widget_instructions() -> str:
     return (
         "Install Termux:Widget, then place the generated shortcut at "
-        "~/.shortcuts/Start Pro AI Server. Add the Termux:Widget shortcut "
-        "manually to the Android home screen and choose Start Pro AI Server."
+        "~/.shortcuts/Start Pro AI Server and its icon at "
+        "~/.shortcuts/icons/Start Pro AI Server.png. Add the Termux:Widget shortcut "
+        "manually to the Android home screen and choose Start Pro AI Server. "
+        "If the icon was added after the shortcut, remove and add the shortcut again."
     )
 
 
@@ -152,6 +156,7 @@ def generate_termux_scripts(
         script_dir / "start-pro-ai-server.sh": generate_start_script(normalized),
         script_dir / "install-models.sh": generate_install_models_script(chat_model, autocomplete_model),
         script_dir / WIDGET_SHORTCUT_PATH: generate_widget_shortcut_script(),
+        script_dir / WIDGET_ICON_PATH: _widget_icon_png(),
         script_dir / "ANDROID_OPTIMIZATION_CHECKLIST.txt": "\n".join(android_battery_optimization_checklist()) + "\n",
         script_dir / "TERMUX_WIDGET_INSTRUCTIONS.txt": termux_widget_instructions() + "\n",
     }
@@ -163,6 +168,13 @@ def write_termux_scripts(bundle: TermuxScriptBundle, root: Path = Path(".")) -> 
     for relative_path, content in bundle.files.items():
         path = root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="\n")
+        if isinstance(content, bytes):
+            path.write_bytes(content)
+        else:
+            path.write_text(content, encoding="utf-8", newline="\n")
         written.append(path)
     return written
+
+
+def _widget_icon_png() -> bytes:
+    return (files("pro_ai_server") / "ui" / "pro-ai-server.png").read_bytes()

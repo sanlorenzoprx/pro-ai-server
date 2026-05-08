@@ -102,8 +102,8 @@ def plan_setup_workflow(
             SetupStep(
                 key="create-usb-tunnel",
                 title="Create USB tunnel",
-                detail="Plan adb reverse from host localhost:11434 to phone tcp:11434.",
-                commands=(("adb", "reverse", "tcp:11434", "tcp:11434"),),
+                detail="Plan adb forward from host localhost:11434 to phone tcp:11434.",
+                commands=(("adb", "forward", "tcp:11434", "tcp:11434"),),
                 notes=("USB tunnel keeps Ollama reachable on localhost without network exposure.",),
             )
         )

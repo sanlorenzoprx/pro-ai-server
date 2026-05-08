@@ -20,7 +20,7 @@ A developer can connect an Android phone, run Pro AI Server, and get:
    - chat, edit, and refactor model
    - fast autocomplete model
 4. Safe Continue IDE config generation.
-5. USB tunnel support through `adb reverse tcp:11434 tcp:11434`.
+5. USB tunnel support through `adb forward tcp:11434 tcp:11434`.
 6. One-tap Android home screen startup through Termux:Widget.
 7. Optional private remote access through Tailscale.
 8. Diagnostics and support logs.
@@ -314,7 +314,7 @@ Diagnostics should include:
 - Host: Python version, OS, Pro AI Server version, ADB path, IDE CLIs found.
 - Phone: `adb devices`, manufacturer, model, Android version, ABI, RAM, free
   storage, battery level, charging state.
-- Server: `adb reverse --list`, `curl http://localhost:11434/api/tags`.
+- Server: `adb forward --list`, `curl http://localhost:11434/api/tags`.
 
 Diagnostics should handle no phone connected and Ollama not responding.
 
@@ -346,7 +346,7 @@ pro-ai-server doctor
 4. `continue_config.py`: YAML generation and backup.
 5. `termux_scripts.py`: script generation.
 6. `ide.py`: IDE CLI detection.
-7. `tunnel.py`: ADB reverse tunnel.
+7. `tunnel.py`: adb forward tunnel.
 8. `diagnostics.py`: support report.
 9. `cli.py`: expose commands.
 10. `.github/workflows/ci.yml`: automated checks.

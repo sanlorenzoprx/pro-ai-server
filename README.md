@@ -20,11 +20,22 @@ The CLI currently supports:
 - `generate-scripts` creation of inspectable Termux bootstrap, start, model install, Android optimization, and Termux:Widget helper files.
 - `push-scripts --serial <device>` delivery of generated Termux files with `adb push`.
 - `configure-continue --mode usb` Continue `config.yaml` generation, with backup protection for an existing config.
-- `tunnel --serial <device>` USB forwarding with `adb reverse tcp:11434 tcp:11434`.
+- `tunnel --serial <device>` USB forwarding with `adb forward tcp:11434 tcp:11434`.
 - `setup` plan mode and `setup --execute --yes` for the guided MVP flow.
 - `setup-tailscale` host/phone Tailscale readiness checks with Windows `winget`, Android APK install, and Play Store launch support.
+- `server-endpoints` local endpoint view for the forwarded Ollama lane and optional native llama.cpp lane.
 - `status` concise readiness summary for phone, USB tunnel, Ollama, and IDE integration.
 - `diagnose --output diagnostics.txt` support reports for host, phone, tunnel, and local Ollama checks.
+- `ui` local dashboard for status, endpoint probes, scripts, tunnel actions, and diagnostics.
+
+The Windows desktop host lives in `apps/windows`. Build it with:
+
+```powershell
+.\scripts\build-desktop-app.ps1
+.\scripts\create-desktop-shortcut.ps1
+```
+
+Then launch **Pro AI Server** from the Windows desktop shortcut. Do not open `src/pro_ai_server/ui/index.html` directly; the UI must be served by the local app so `/api/status` and the bundled assets are available.
 
 The MVP prefers bundled ADB at `embedded-tools/windows/platform-tools/adb.exe`, then falls back to system `adb` on `PATH`. Fastboot is not used by MVP behavior.
 
@@ -45,6 +56,7 @@ pro-ai-server generate-scripts --mode usb
 pro-ai-server push-scripts
 pro-ai-server configure-continue --mode usb
 pro-ai-server tunnel
+pro-ai-server ui
 ```
 
 When multiple phones are connected, pass `--serial <device>` to ADB-backed commands such as `scan`, `push-scripts`, and `tunnel`.
@@ -53,7 +65,7 @@ See [docs/CLI_WORKFLOW.md](docs/CLI_WORKFLOW.md) for the full MVP CLI flow, incl
 
 ## Connection Modes
 
-USB is the default and safest MVP mode. It keeps Ollama bound to `127.0.0.1:11434` on the phone and uses `adb reverse` so Continue talks to `http://localhost:11434` on the host.
+USB is the default and safest MVP mode. It keeps Ollama bound to `127.0.0.1:11434` on the phone and uses `adb forward` so Continue talks to `http://localhost:11434` on the host.
 
 LAN and Tailscale modes require `--host` when configuring Continue or planning setup. LAN exposes Ollama to devices on the local network. Tailscale should use a private Tailscale hostname or `100.x.x.x` IP address.
 

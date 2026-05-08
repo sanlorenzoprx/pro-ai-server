@@ -142,7 +142,7 @@ def build_diagnostics_report(
     server_lines: list[str] = []
     if not adb_path:
         phone_lines.append("No ADB path available; phone diagnostics were not run.")
-        server_lines.append("ADB reverse list skipped because ADB is unavailable.")
+        server_lines.append("ADB forward list skipped because ADB is unavailable.")
         server_lines.append(
             "Ollama tags: "
             + _run_or_message(["curl", "--silent", "--show-error", "http://localhost:11434/api/tags"], command_runner)
@@ -171,9 +171,9 @@ def build_diagnostics_report(
         else:
             phone_lines.append("No phone connected or authorized.")
 
-        server_lines.append("adb reverse --list:")
-        reverse_list = _run_or_message([adb_path, "reverse", "--list"], command_runner)
-        server_lines.extend(redact_sensitive_paths(reverse_list).splitlines() or ["<no output>"])
+        server_lines.append("adb forward --list:")
+        forward_list = _run_or_message([adb_path, "forward", "--list"], command_runner)
+        server_lines.extend(redact_sensitive_paths(forward_list).splitlines() or ["<no output>"])
         server_lines.append("Ollama tags:")
         server_lines.extend(
             redact_sensitive_paths(

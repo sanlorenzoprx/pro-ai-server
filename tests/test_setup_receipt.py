@@ -114,7 +114,7 @@ def test_render_setup_receipt_is_deterministic_text():
         "- none\n"
         "\n"
         "Next steps\n"
-        "- USB tunnel: Keep adb reverse tcp:11434 active while using Continue.\n"
+        "- USB tunnel: Keep adb forward tcp:11434 active while using Continue.\n"
         "- Termux scripts: Run the delivered scripts from Termux.\n"
         "\n"
         "Warnings\n"

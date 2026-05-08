@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Pro AI Server icon">
+  <rect width="256" height="256" rx="56" fill="#e8f0ff"/>
+  <rect x="52" y="32" width="152" height="192" rx="34" fill="#ffffff" stroke="#2563eb" stroke-width="14"/>
+  <rect x="76" y="58" width="104" height="118" rx="18" fill="#f5f8ff"/>
+  <circle cx="92" cy="84" r="9" fill="#0f8f61"/>
+  <circle cx="122" cy="84" r="9" fill="#0f8f61"/>
+  <circle cx="152" cy="84" r="9" fill="#0f8f61"/>
+  <rect x="86" y="112" width="84" height="12" rx="6" fill="#cbdaf6"/>
+  <rect x="86" y="138" width="62" height="12" rx="6" fill="#dbe6fb"/>
+  <rect x="92" y="194" width="72" height="14" rx="7" fill="#2563eb"/>
+</svg>

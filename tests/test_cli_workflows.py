@@ -7,6 +7,7 @@ from pro_ai_server.ide import IdeCli, IdeExtensionStatus
 from pro_ai_server.ollama import OllamaServerStatus
 from pro_ai_server.release_validation import ReleaseValidationIssue, ReleaseValidationResult
 from pro_ai_server.status import ProAiStatus, StatusItem
+from pro_ai_server import web
 
 
 def test_setup_prints_plan_without_executing_actions():
@@ -251,6 +252,22 @@ def test_server_endpoints_checks_native_models_when_configured(monkeypatch):
     assert any(command[-1].endswith("/api/tags") for command in commands)
     assert any(command[-1].endswith("/health") for command in commands)
     assert any(command[-1].endswith("/v1/models") for command in commands)
+
+
+def test_ui_command_launches_dashboard(monkeypatch):
+    runner = CliRunner()
+    calls = []
+
+    def fake_serve_ui(host, port, open_browser):
+        calls.append((host, port, open_browser))
+        return "http://127.0.0.1:8765"
+
+    monkeypatch.setattr(web, "serve_ui", fake_serve_ui)
+
+    result = runner.invoke(cli.app, ["ui", "--no-open"])
+
+    assert result.exit_code == 0
+    assert calls == [("127.0.0.1", 8765, False)]
 
 
 def test_doctor_reports_missing_continue_extension(monkeypatch):

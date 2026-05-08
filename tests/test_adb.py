@@ -55,7 +55,7 @@ def test_cli_behavior_does_not_reference_fastboot():
     assert "fastboot" not in cli.Path(cli.__file__).read_text(encoding="utf-8")
 
 
-def test_tunnel_reports_failure_when_adb_reverse_fails(monkeypatch):
+def test_tunnel_reports_failure_when_adb_forward_fails(monkeypatch):
     runner = CliRunner()
 
     def fake_run(command, capture_output, text):
@@ -69,9 +69,9 @@ def test_tunnel_reports_failure_when_adb_reverse_fails(monkeypatch):
     result = runner.invoke(cli.app, ["tunnel"])
 
     assert result.exit_code == 1
-    assert "ADB reverse tunnel failed" in result.output
+    assert "ADB forward tunnel failed" in result.output
     assert "no devices/emulators found" in result.output
-    assert "ADB reverse tunnel requested" not in result.output
+    assert "ADB forward tunnel requested" not in result.output
 
 
 def test_tunnel_uses_requested_serial(monkeypatch):
@@ -95,7 +95,7 @@ def test_tunnel_uses_requested_serial(monkeypatch):
     result = runner.invoke(cli.app, ["tunnel", "--serial", "DEF456"])
 
     assert result.exit_code == 0
-    assert ["adb", "-s", "DEF456", "reverse", "tcp:11434", "tcp:11434"] in commands
+    assert ["adb", "-s", "DEF456", "forward", "tcp:11434", "tcp:11434"] in commands
 
 
 def test_tunnel_requires_serial_when_multiple_devices_are_connected(monkeypatch):
@@ -134,7 +134,7 @@ def test_push_scripts_executes_delivery_plan_with_selected_serial(monkeypatch, t
     result = runner.invoke(cli.app, ["push-scripts", "--generated-termux-dir", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert ["adb", "-s", "ABC123", "shell", "mkdir", "-p", "/data/data/com.termux/files/home/.shortcuts"] in commands
+    assert ["adb", "-s", "ABC123", "shell", "mkdir", "-p", "/data/data/com.termux/files/home/.shortcuts/icons"] in commands
     assert ["adb", "-s", "ABC123", "push", str(tmp_path / "bootstrap.sh"), "/data/data/com.termux/files/home/bootstrap.sh"] in commands
     assert ["adb", "-s", "ABC123", "shell", "chmod", "+x", "/data/data/com.termux/files/home/bootstrap.sh"] in commands
     assert "~/bootstrap.sh" in result.output

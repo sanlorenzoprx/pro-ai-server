@@ -7,7 +7,7 @@ from pro_ai_server.ide import IdeExtensionStatus
 from pro_ai_server.ollama import OllamaServerStatus
 
 
-USB_REVERSE_PORT = "tcp:11434"
+USB_FORWARD_PORT = "tcp:11434"
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,7 @@ class ProAiStatus:
 
 def build_status_report(
     adb_devices_output: str | None,
-    adb_reverse_output: str | None,
+    adb_forward_output: str | None,
     ollama_status: OllamaServerStatus,
     ide_statuses: tuple[IdeExtensionStatus, ...],
     *,
@@ -37,7 +37,7 @@ def build_status_report(
     return ProAiStatus(
         items=(
             _adb_item(adb_devices_output, adb_path=adb_path),
-            _tunnel_item(adb_reverse_output, adb_path=adb_path),
+            _tunnel_item(adb_forward_output, adb_path=adb_path),
             _server_item(ollama_status),
             _ide_item(ide_statuses),
         )
@@ -60,14 +60,14 @@ def _adb_item(adb_devices_output: str | None, *, adb_path: str | None) -> Status
     return StatusItem("Phone", False, selection.error or "no authorized phone detected")
 
 
-def _tunnel_item(adb_reverse_output: str | None, *, adb_path: str | None) -> StatusItem:
+def _tunnel_item(adb_forward_output: str | None, *, adb_path: str | None) -> StatusItem:
     if not adb_path:
         return StatusItem("USB tunnel", None, "skipped because adb is unavailable")
-    if not adb_reverse_output:
-        return StatusItem("USB tunnel", False, "adb reverse tcp:11434 is not active")
-    if USB_REVERSE_PORT in adb_reverse_output:
-        return StatusItem("USB tunnel", True, "adb reverse tcp:11434 is active")
-    return StatusItem("USB tunnel", False, "adb reverse tcp:11434 is not active")
+    if not adb_forward_output:
+        return StatusItem("USB tunnel", False, "adb forward tcp:11434 is not active")
+    if USB_FORWARD_PORT in adb_forward_output:
+        return StatusItem("USB tunnel", True, "adb forward tcp:11434 is active")
+    return StatusItem("USB tunnel", False, "adb forward tcp:11434 is not active")
 
 
 def _server_item(ollama_status: OllamaServerStatus) -> StatusItem:

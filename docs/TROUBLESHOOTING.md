@@ -44,19 +44,19 @@ pro-ai-server termux-check
 
 If Termux is missing, install Termux from F-Droid or GitHub, then open it once. If Termux:API is missing, install Termux:API, then rerun `termux-check`. If Termux home is not initialized, open Termux once on the phone so `/data/data/com.termux/files/home` exists.
 
-Termux:Widget manual placement is still required. Install Termux:Widget, confirm the generated `Start Pro AI Server` shortcut is in `~/.shortcuts`, then add the widget or shortcut from the Android home screen.
+Termux:Widget manual placement is still required. Install Termux:Widget, confirm the generated `Start Pro AI Server` shortcut is in `~/.shortcuts`, confirm the generated icon is in `~/.shortcuts/icons/Start Pro AI Server.png`, then add the widget or shortcut from the Android home screen. If the shortcut already existed before the icon was added, remove it from the home screen and add it again.
 
 ## Ollama and Models
 
 ### Ollama not responding on localhost:11434
 
-For USB mode, start the generated script inside Termux, then create the reverse tunnel:
+For USB mode, start the generated script inside Termux, then create the forward tunnel:
 
 ```powershell
 pro-ai-server tunnel
 ```
 
-Confirm Continue points to `http://localhost:11434`. In USB mode, Ollama should bind to `127.0.0.1:11434` on the phone and Windows reaches it through `adb reverse tcp:11434 tcp:11434`.
+Confirm Continue points to `http://localhost:11434`. In USB mode, Ollama should bind to `127.0.0.1:11434` on the phone and Windows reaches it through `adb forward tcp:11434 tcp:11434`.
 
 For LAN or Tailscale mode, confirm the phone script was generated for that mode and that Continue uses the explicit `--host` value.
 

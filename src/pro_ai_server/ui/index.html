@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pro AI Server</title>
+    <link rel="icon" type="image/png" href="/pro-ai-server.png?v=4" />
+    <link rel="apple-touch-icon" href="/pro-ai-server.png?v=4" />
+    <link rel="manifest" href="/manifest.webmanifest?v=4" />
+    <link rel="stylesheet" href="/styles.css?v=4" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+          </div>
+          <div>
+            <h1>Pro AI Server</h1>
+            <p>Android local AI control room</p>
+          </div>
+        </div>
+        <nav class="nav-stack" aria-label="Primary">
+          <a class="active" href="#status" data-view-link="status">Status</a>
+          <a href="#endpoints" data-view-link="endpoints">Endpoints</a>
+          <a href="#setup" data-view-link="setup">Setup</a>
+          <a href="#diagnostics" data-view-link="diagnostics">Diagnostics</a>
+        </nav>
+        <div class="sidebar-status">
+          <span class="signal-dot unknown" id="sidebarSignal"></span>
+          <span id="sidebarStatus">Checking system</span>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Local dashboard</p>
+            <h2>Phone server readiness</h2>
+            <p class="topbar-host" id="topbarHostPhone">Hosting phone: checking</p>
+          </div>
+          <div class="topbar-actions">
+            <button class="primary-button start-button" id="tunnelButton" data-busy-label="Starting server">
+              <span class="start-icon" aria-hidden="true"></span>
+              <span class="button-label">Start AI Server</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="hero-panel view-section" id="status" data-view-section="status">
+          <div class="device-visual" aria-hidden="true">
+            <div class="phone-frame">
+              <div class="phone-screen">
+                <div class="pulse-row"><span></span><span></span><span></span></div>
+                <div class="screen-line wide"></div>
+                <div class="screen-line"></div>
+                <div class="screen-grid">
+                  <i></i><i></i><i></i><i></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hero-copy">
+            <p class="eyebrow">Daily launch check</p>
+            <h3 id="readinessTitle">Checking readiness</h3>
+            <p id="readinessDetail">Waiting for phone, tunnel, Ollama, and Continue status.</p>
+            <div class="host-phone-pill" id="hostPhonePill">Hosting phone: checking</div>
+          </div>
+        </section>
+
+        <section class="status-grid view-section" id="statusGrid" data-view-section="status" aria-live="polite"></section>
+
+        <section class="split-layout view-section" id="endpoints" data-view-section="endpoints" hidden>
+          <div class="panel endpoint-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Ollama lane</p>
+                <h3>Termux endpoint</h3>
+              </div>
+              <span class="status-pill" id="ollamaEndpointPill">Checking</span>
+            </div>
+            <label class="field-label" for="ollamaBase">API base</label>
+            <div class="input-row">
+              <input id="ollamaBase" value="http://127.0.0.1:11434" />
+              <button id="probeEndpointsButton" data-busy-label="Probing">Probe</button>
+            </div>
+            <div class="endpoint-list" id="ollamaEndpointList"></div>
+            <div class="model-list" id="ollamaModels"></div>
+          </div>
+
+          <div class="panel endpoint-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Optional lane</p>
+                <h3>Native llama.cpp</h3>
+              </div>
+              <label class="toggle">
+                <input id="nativeEnabled" type="checkbox" />
+                <span>Enable</span>
+              </label>
+            </div>
+            <label class="field-label" for="nativeBase">API base</label>
+            <input id="nativeBase" value="http://127.0.0.1:11435" disabled />
+            <div class="endpoint-list" id="nativeEndpointList"></div>
+            <div class="model-list" id="nativeModels"></div>
+          </div>
+        </section>
+
+        <section class="split-layout view-section" id="setup" data-view-section="setup" hidden>
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Script builder</p>
+                <h3>Generate Termux bundle</h3>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label>
+                Mode
+                <select id="scriptMode">
+                  <option value="usb">USB</option>
+                  <option value="lan">LAN</option>
+                  <option value="tailscale">Tailscale</option>
+                </select>
+              </label>
+              <label>
+                Profile
+                <select id="scriptProfile">
+                  <option value="professional">Professional</option>
+                  <option value="lightweight">Lightweight</option>
+                  <option value="max">Max</option>
+                </select>
+              </label>
+            </div>
+            <label class="field-label" for="outputDir">Output directory</label>
+            <input id="outputDir" value="." />
+            <button class="primary-button full-width" id="generateScriptsButton" data-busy-label="Generating">Generate scripts</button>
+          </div>
+
+          <div class="panel log-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Activity</p>
+                <h3>Command output</h3>
+              </div>
+            </div>
+            <pre id="activityLog">Ready.</pre>
+          </div>
+        </section>
+
+        <section class="panel diagnostics-panel view-section" id="diagnostics" data-view-section="diagnostics" hidden>
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Support report</p>
+              <h3>Diagnostics</h3>
+            </div>
+            <button id="diagnosticsButton" data-busy-label="Running">Run diagnostics</button>
+          </div>
+          <pre id="diagnosticsOutput">No report yet.</pre>
+        </section>
+      </main>
+    </div>
+    <script src="/app.js?v=4"></script>
+  </body>
+</html>

@@ -22,7 +22,7 @@ def test_status_report_marks_ready_phone_tunnel_server_and_ide():
 
     assert report.ok
     assert "OK Phone: connected (ABC123)" in rendered
-    assert "OK USB tunnel: adb reverse tcp:11434 is active" in rendered
+    assert "OK USB tunnel: adb forward tcp:11434 is active" in rendered
     assert "OK Ollama: responding on /api/tags (1 model)" in rendered
     assert "OK IDE: Continue ready in cursor" in rendered
 
@@ -46,6 +46,6 @@ def test_status_report_marks_missing_pieces():
 
     assert not report.ok
     assert "Needs attention Phone: No ADB devices found" in rendered
-    assert "Needs attention USB tunnel: adb reverse tcp:11434 is not active" in rendered
+    assert "Needs attention USB tunnel: adb forward tcp:11434 is not active" in rendered
     assert "Needs attention Ollama: Ollama did not return a response." in rendered
     assert "Needs attention IDE: Continue extension missing in cursor" in rendered

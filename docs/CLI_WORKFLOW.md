@@ -99,7 +99,7 @@ pro-ai-server push-scripts --serial <device-serial>
 
 The CLI uses `adb push` to copy generated files to the Termux home directory and creates the `.shortcuts` folder. After pushing, run the printed commands inside Termux.
 
-Termux:Widget still requires manual installation and placement: install Termux:Widget on Android, add the generated `Start Pro AI Server` shortcut to `~/.shortcuts`, then place the widget/shortcut on the Android home screen.
+Termux:Widget still requires manual installation and placement: install Termux:Widget on Android, add the generated `Start Pro AI Server` shortcut to `~/.shortcuts`, keep the generated icon at `~/.shortcuts/icons/Start Pro AI Server.png`, then place the widget/shortcut on the Android home screen.
 
 ## 8. Configure Continue
 
@@ -166,7 +166,7 @@ pro-ai-server tunnel --serial <device-serial>
 This requests:
 
 ```text
-adb reverse tcp:11434 tcp:11434
+adb forward tcp:11434 tcp:11434
 ```
 
 After the tunnel is active, Continue can use `http://localhost:11434` from the Windows host while Ollama remains bound to phone-local loopback in USB mode.
@@ -202,9 +202,10 @@ pro-ai-server setup --mode lan --host 192.168.1.50 --no-tunnel
 ```powershell
 pro-ai-server server-endpoints
 pro-ai-server status
+pro-ai-server ui
 ```
 
-`server-endpoints` prints the local access URLs for the Termux/Ollama lane on `127.0.0.1:11434`; by default it also probes that forwarded endpoint and lists live models when it is reachable. If you have separately forwarded a native Android llama.cpp server, pass `--native-api-base` to display and probe that optional lane. `status` prints a concise readiness view for the connected phone, USB tunnel, Ollama `/api/tags`, and Continue-ready IDE integration. Both commands are read-only and intended for quick daily checks before opening Cursor, VS Code, VSCodium, or Windsurf.
+`server-endpoints` prints the local access URLs for the Termux/Ollama lane on `127.0.0.1:11434`; by default it also probes that forwarded endpoint and lists live models when it is reachable. If you have separately forwarded a native Android llama.cpp server, pass `--native-api-base` to display and probe that optional lane. `status` prints a concise readiness view for the connected phone, USB tunnel, Ollama `/api/tags`, and Continue-ready IDE integration. `ui` starts the local dashboard at `http://127.0.0.1:8765` for the same daily checks, endpoint probes, USB tunnel action, Termux script generation, and diagnostics. These commands are intended for quick daily checks before opening Cursor, VS Code, VSCodium, or Windsurf.
 
 Use a custom API base for LAN or Tailscale checks:
 
@@ -219,4 +220,4 @@ pro-ai-server diagnose
 pro-ai-server diagnose --output diagnostics.txt
 ```
 
-Diagnostics include host details, ADB path, connected phone state, selected hardware facts, `adb reverse --list`, IDE CLI discovery, and a local Ollama tags check. Reports redact user-profile paths where possible.
+Diagnostics include host details, ADB path, connected phone state, selected hardware facts, `adb forward --list`, IDE CLI discovery, and a local Ollama tags check. Reports redact user-profile paths where possible.

@@ -158,7 +158,7 @@ def _next_step_items(
 ) -> tuple[SetupReceiptItem, ...]:
     items = [SetupReceiptItem("Run in Termux", command) for command in post_push_commands]
     if tunnel_requested:
-        items.append(SetupReceiptItem("USB tunnel", "Keep adb reverse tcp:11434 active while using Continue."))
+        items.append(SetupReceiptItem("USB tunnel", "Keep adb forward tcp:11434 active while using Continue."))
     if pushed_scripts and not post_push_commands:
         items.append(SetupReceiptItem("Termux scripts", "Run the delivered scripts from Termux."))
     return tuple(items)

@@ -68,7 +68,7 @@ def test_tunnel_step_defaults_to_usb_and_can_be_overridden():
     assert "create-usb-tunnel" not in step_keys(usb_without_tunnel)
 
     tunnel_step = next(step for step in lan_with_tunnel.steps if step.key == "create-usb-tunnel")
-    assert tunnel_step.commands == (("adb", "reverse", "tcp:11434", "tcp:11434"),)
+    assert tunnel_step.commands == (("adb", "forward", "tcp:11434", "tcp:11434"),)
 
 
 def test_push_scripts_step_notes_inspectable_adb_push_delivery():

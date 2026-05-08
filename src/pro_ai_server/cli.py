@@ -470,6 +470,18 @@ def server_endpoints(
             console.print("  Live models: none detected")
 
 
+@app.command()
+def ui(
+    host: str = typer.Option("127.0.0.1", help="Host interface for the local web UI."),
+    port: int = typer.Option(8765, help="Port for the local web UI."),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the dashboard in the default browser."),
+) -> None:
+    """Launch the local Pro AI Server dashboard."""
+    from pro_ai_server.web import serve_ui
+
+    serve_ui(host=host, port=port, open_browser=open_browser)
+
+
 def _print_endpoint_status(ok: bool, label: str) -> None:
     if ok:
         console.print(f"{label}: [green]ready[/green]")
@@ -671,7 +683,11 @@ def setup(
             if push:
                 delivery_plan = build_script_delivery_plan(output_dir / "generated" / "termux", remote_home, selected_serial)
                 run_command(
-                    adb_command(adb, ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts"], selected_serial)
+                    adb_command(
+                        adb,
+                        ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts/icons"],
+                        selected_serial,
+                    )
                 )
                 for command in delivery_plan.commands:
                     run_command([adb, *list(command[1:])])
@@ -681,9 +697,9 @@ def setup(
                     console.print(f"  {command}")
 
             if create_usb_tunnel is not False and plan.mode == "usb":
-                run_command(adb_command(adb, ["reverse", "tcp:11434", "tcp:11434"], selected_serial))
+                run_command(adb_command(adb, ["forward", "tcp:11434", "tcp:11434"], selected_serial))
                 tunnel_requested = True
-                console.print(f"[green]ADB reverse tunnel requested for device {selected_serial}.[/green]")
+                console.print(f"[green]ADB forward tunnel requested for device {selected_serial}.[/green]")
         receipt = build_setup_receipt(
             workflow_plan=plan,
             continue_result=continue_result,
@@ -722,7 +738,9 @@ def push_scripts(
     try:
         selected_serial = select_device_serial(adb, serial)
         plan = build_script_delivery_plan(generated_termux_dir, remote_home, selected_serial)
-        run_command(adb_command(adb, ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts"], selected_serial))
+        run_command(
+            adb_command(adb, ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts/icons"], selected_serial)
+        )
         for command in plan.commands:
             run_command([adb, *list(command[1:])])
     except CommandError as exc:
@@ -751,16 +769,16 @@ def tunnel(serial: str | None = typer.Option(None, help="ADB device serial to us
 
     try:
         selected_serial = select_device_serial(adb, serial)
-        output = run_command(adb_command(adb, ["reverse", "tcp:11434", "tcp:11434"], selected_serial))
+        output = run_command(adb_command(adb, ["forward", "tcp:11434", "tcp:11434"], selected_serial))
     except CommandError as exc:
-        console.print("[red]ADB reverse tunnel failed.[/red]")
+        console.print("[red]ADB forward tunnel failed.[/red]")
         console.print(str(exc))
         raise typer.Exit(code=1) from exc
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from exc
 
-    console.print(f"[green]ADB reverse tunnel requested for device {selected_serial} on port 11434.[/green]")
+    console.print(f"[green]ADB forward tunnel requested for device {selected_serial} on port 11434.[/green]")
     if output:
         console.print(output)
 
@@ -780,14 +798,14 @@ def status(api_base: str = typer.Option("http://localhost:11434", help="Ollama A
     """Show concise phone, tunnel, Ollama, and IDE readiness."""
     adb = resolve_adb()
     adb_devices_output = run_optional_command([adb, "devices"]) if adb else None
-    adb_reverse_output = run_optional_command([adb, "reverse", "--list"]) if adb else None
+    adb_forward_output = run_optional_command([adb, "forward", "--list"]) if adb else None
     tags_output = run_optional_command(list(build_ollama_tags_command(api_base)))
     ollama_status = assess_ollama_server_status(tags_output)
     ide_statuses = tuple(detect_continue_extension_status(ide) for ide in detect_ide_clis())
 
     report = build_status_report(
         adb_devices_output,
-        adb_reverse_output,
+        adb_forward_output,
         ollama_status,
         ide_statuses,
         adb_path=adb,

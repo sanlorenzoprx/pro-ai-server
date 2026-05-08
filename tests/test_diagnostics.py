@@ -39,7 +39,7 @@ def test_diagnostics_report_includes_host_phone_and_server_sections():
             "dumpsys",
             "battery",
         ): "level: 88\ntemperature: 317\nplugged: 1\nstatus: 2",
-        ("C:\\Users\\Hector\\tools\\adb.exe", "reverse", "--list"): "ABC123 tcp:11434 tcp:11434",
+        ("C:\\Users\\Hector\\tools\\adb.exe", "forward", "--list"): "ABC123 tcp:11434 tcp:11434",
         ("curl", "--silent", "--show-error", "http://localhost:11434/api/tags"): '{"models":[]}',
     }
 
@@ -76,14 +76,14 @@ def test_diagnostics_report_handles_no_phone_connected():
     def runner(command):
         if command[-1] == "devices":
             return "List of devices attached\n"
-        if command[:2] == ["adb", "reverse"]:
+        if command[:2] == ["adb", "forward"]:
             return ""
         return '{"models":[]}'
 
     report = build_diagnostics_report(adb_path="adb", command_runner=runner, which=lambda _: None).text
 
     assert "No phone connected or authorized." in report
-    assert "adb reverse --list:" in report
+    assert "adb forward --list:" in report
 
 
 def test_diagnostics_report_handles_ollama_not_responding():
