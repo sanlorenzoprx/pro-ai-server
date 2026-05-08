@@ -200,10 +200,11 @@ pro-ai-server setup --mode lan --host 192.168.1.50 --no-tunnel
 ## 12. Check Live Status
 
 ```powershell
+pro-ai-server server-endpoints
 pro-ai-server status
 ```
 
-`status` prints a concise readiness view for the connected phone, USB tunnel, Ollama `/api/tags`, and Continue-ready IDE integration. It is read-only and intended for quick daily checks before opening Cursor, VS Code, VSCodium, or Windsurf.
+`server-endpoints` prints the local access URLs for the Termux/Ollama lane on `127.0.0.1:11434`; by default it also probes that forwarded endpoint and lists live models when it is reachable. If you have separately forwarded a native Android llama.cpp server, pass `--native-api-base` to display and probe that optional lane. `status` prints a concise readiness view for the connected phone, USB tunnel, Ollama `/api/tags`, and Continue-ready IDE integration. Both commands are read-only and intended for quick daily checks before opening Cursor, VS Code, VSCodium, or Windsurf.
 
 Use a custom API base for LAN or Tailscale checks:
 

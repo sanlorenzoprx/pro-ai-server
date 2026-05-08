@@ -50,6 +50,7 @@ def test_cli_workflow_documents_windows_first_flow_and_safety_claims():
         "pro-ai-server push-scripts",
         "pro-ai-server configure-continue --mode usb",
         "pro-ai-server setup-tailscale",
+        "pro-ai-server server-endpoints",
         "pro-ai-server status",
         "pro-ai-server tunnel",
         "pro-ai-server setup",

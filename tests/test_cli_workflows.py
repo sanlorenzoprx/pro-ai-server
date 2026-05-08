@@ -186,6 +186,73 @@ def test_server_check_accepts_custom_api_base(monkeypatch):
     assert "Ollama API: http://pro-ai-phone:11434" in result.output
 
 
+def test_server_endpoints_prints_access_urls_without_checking():
+    runner = CliRunner()
+
+    result = runner.invoke(cli.app, ["server-endpoints", "--no-check"])
+
+    assert result.exit_code == 0
+    assert "Server endpoints" in result.output
+    assert "Termux/Ollama" in result.output
+    assert "URL: http://127.0.0.1:11434" in result.output
+    assert "Generate: http://127.0.0.1:11434/api/generate" in result.output
+    assert "Native Android llama.cpp (optional)" in result.output
+    assert "URL: not configured" in result.output
+    assert "--native-api-base" in result.output
+
+
+def test_server_endpoints_checks_ollama_live_models_by_default(monkeypatch):
+    runner = CliRunner()
+    commands = []
+
+    def fake_run_optional(command):
+        commands.append(command)
+        if command[-1].endswith("/api/tags"):
+            return '{"models":[{"name":"qwen2.5-coder:0.5b"},{"name":"qwen2.5-coder:1.5b"}]}'
+        return ""
+
+    monkeypatch.setattr(cli, "run_optional_command", fake_run_optional)
+
+    result = runner.invoke(cli.app, ["server-endpoints"])
+
+    assert result.exit_code == 0
+    assert "Status: ready" in result.output
+    assert "qwen2.5-coder:0.5b" in result.output
+    assert "qwen2.5-coder:1.5b" in result.output
+    assert "URL: not configured" in result.output
+    assert any(command[-1].endswith("/api/tags") for command in commands)
+    assert not any(command[-1].endswith("/health") for command in commands)
+    assert not any(command[-1].endswith("/v1/models") for command in commands)
+
+
+def test_server_endpoints_checks_native_models_when_configured(monkeypatch):
+    runner = CliRunner()
+    commands = []
+
+    def fake_run_optional(command):
+        commands.append(command)
+        if command[-1].endswith("/api/tags"):
+            return '{"models":[]}'
+        if command[-1].endswith("/health"):
+            return '{"status":"ok"}'
+        if command[-1].endswith("/v1/models"):
+            return '{"data":[{"id":"qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"}]}'
+        return ""
+
+    monkeypatch.setattr(cli, "run_optional_command", fake_run_optional)
+
+    result = runner.invoke(cli.app, ["server-endpoints", "--native-api-base", "http://127.0.0.1:11435"])
+
+    assert result.exit_code == 0
+    assert "URL: http://127.0.0.1:11435" in result.output
+    assert "Completion: http://127.0.0.1:11435/completion" in result.output
+    assert "Status: ready" in result.output
+    assert "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf" in result.output
+    assert any(command[-1].endswith("/api/tags") for command in commands)
+    assert any(command[-1].endswith("/health") for command in commands)
+    assert any(command[-1].endswith("/v1/models") for command in commands)
+
+
 def test_doctor_reports_missing_continue_extension(monkeypatch):
     runner = CliRunner()
 
