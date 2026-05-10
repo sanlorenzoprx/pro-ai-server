@@ -2,11 +2,11 @@ import subprocess
 
 from typer.testing import CliRunner
 
-from pro_ai_server import cli
+from droidshield import cli
 
 
 def test_resolve_adb_prefers_packaged_bundled_adb(tmp_path, monkeypatch):
-    package_dir = tmp_path / "site-packages" / "pro_ai_server"
+    package_dir = tmp_path / "site-packages" / "droidshield"
     adb_path = package_dir / "embedded-tools" / "windows" / "platform-tools" / "adb.exe"
     adb_path.parent.mkdir(parents=True)
     adb_path.write_text("", encoding="utf-8")
@@ -19,7 +19,7 @@ def test_resolve_adb_prefers_packaged_bundled_adb(tmp_path, monkeypatch):
 
 def test_resolve_adb_falls_back_to_source_tree_bundled_adb(tmp_path, monkeypatch):
     repo_dir = tmp_path / "repo"
-    module_path = repo_dir / "src" / "pro_ai_server" / "cli.py"
+    module_path = repo_dir / "src" / "droidshield" / "cli.py"
     adb_path = repo_dir / "embedded-tools" / "windows" / "platform-tools" / "adb.exe"
     module_path.parent.mkdir(parents=True)
     adb_path.parent.mkdir(parents=True)
@@ -32,7 +32,7 @@ def test_resolve_adb_falls_back_to_source_tree_bundled_adb(tmp_path, monkeypatch
 
 
 def test_resolve_adb_falls_back_to_system_adb(tmp_path, monkeypatch):
-    package_dir = tmp_path / "site-packages" / "pro_ai_server"
+    package_dir = tmp_path / "site-packages" / "droidshield"
     package_dir.mkdir(parents=True)
 
     monkeypatch.setattr(cli, "__file__", str(package_dir / "cli.py"))
@@ -42,7 +42,7 @@ def test_resolve_adb_falls_back_to_system_adb(tmp_path, monkeypatch):
 
 
 def test_resolve_adb_returns_none_when_bundled_and_system_adb_are_missing(tmp_path, monkeypatch):
-    package_dir = tmp_path / "site-packages" / "pro_ai_server"
+    package_dir = tmp_path / "site-packages" / "droidshield"
     package_dir.mkdir(parents=True)
 
     monkeypatch.setattr(cli, "__file__", str(package_dir / "cli.py"))
@@ -134,7 +134,8 @@ def test_push_scripts_executes_delivery_plan_with_selected_serial(monkeypatch, t
     result = runner.invoke(cli.app, ["push-scripts", "--generated-termux-dir", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert ["adb", "-s", "ABC123", "shell", "mkdir", "-p", "/data/data/com.termux/files/home/.shortcuts/icons"] in commands
-    assert ["adb", "-s", "ABC123", "push", str(tmp_path / "bootstrap.sh"), "/data/data/com.termux/files/home/bootstrap.sh"] in commands
-    assert ["adb", "-s", "ABC123", "shell", "chmod", "+x", "/data/data/com.termux/files/home/bootstrap.sh"] in commands
+    assert ["adb", "-s", "ABC123", "shell", "mkdir", "-p", "/sdcard/Download/droidshield/termux"] in commands
+    assert ["adb", "-s", "ABC123", "push", str(tmp_path / "bootstrap.sh"), "/sdcard/Download/droidshield/termux/bootstrap.sh"] in commands
+    assert not any("/data/data/com.termux" in part for command in commands for part in command)
+    assert "termux-setup-storage" in result.output
     assert "~/bootstrap.sh" in result.output

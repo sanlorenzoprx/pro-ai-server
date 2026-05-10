@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from pro_ai_server.continue_config import ContinueConfigWriteResult
-from pro_ai_server.models import ModelPlan
-from pro_ai_server.script_delivery import ScriptDeliveryPlan
-from pro_ai_server.setup_workflow import SetupWorkflowPlan
-from pro_ai_server.termux_scripts import TermuxScriptBundle
+from droidshield.continue_config import ContinueConfigWriteResult
+from droidshield.models import ModelPlan
+from droidshield.script_delivery import ScriptDeliveryPlan
+from droidshield.setup_workflow import SetupWorkflowPlan
+from droidshield.termux_scripts import TermuxScriptBundle
 
 
 @dataclass(frozen=True)
@@ -96,7 +96,7 @@ def render_setup_receipt(receipt: SetupReceipt) -> str:
     """Render a deterministic text report for CLI output or diagnostics."""
 
     lines = [
-        "Pro AI Server setup receipt",
+        "DroidShield setup receipt",
         "",
         "Summary",
         f"- Mode: {_value(receipt.mode)}",

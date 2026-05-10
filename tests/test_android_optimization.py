@@ -1,4 +1,4 @@
-from pro_ai_server.termux_scripts import android_battery_optimization_checklist
+from droidshield.termux_scripts import android_battery_optimization_checklist
 
 
 def test_android_battery_optimization_checklist_contains_manual_steps():

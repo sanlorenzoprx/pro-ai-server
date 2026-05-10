@@ -1,4 +1,4 @@
-from pro_ai_server.hardware import (
+from droidshield.hardware import (
     assess_device_profile,
     parse_battery_dump,
     parse_data_free_storage_gb,

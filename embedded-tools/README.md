@@ -1,6 +1,6 @@
 # Embedded Platform Tools
 
-Release builds of Pro AI Server should include Android Platform Tools here:
+Release builds of DroidShield should include Android Platform Tools here:
 
 embedded-tools/windows/platform-tools/
 

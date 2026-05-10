@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from pro_ai_server.tailscale import TAILSCALE_ANDROID_PACKAGE, TAILSCALE_WINGET_ID
-from pro_ai_server.tailscale import build_tailscale_install_plan
-from pro_ai_server.tailscale import tailscale_android_installed
-from pro_ai_server.tailscale import tailscale_host_installed
+from droidshield.tailscale import TAILSCALE_ANDROID_PACKAGE, TAILSCALE_WINGET_ID
+from droidshield.tailscale import build_tailscale_install_plan
+from droidshield.tailscale import tailscale_android_installed
+from droidshield.tailscale import tailscale_host_installed
 
 
 def test_build_tailscale_install_plan_uses_winget_and_adb_serial():

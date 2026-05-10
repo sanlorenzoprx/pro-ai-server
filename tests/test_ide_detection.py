@@ -1,7 +1,7 @@
 import subprocess
 
-from pro_ai_server.ide import CONTINUE_EXTENSION_ID, IDE_CLIS, IdeCli, detect_continue_extension_status, detect_ide_clis
-from pro_ai_server.ide import install_continue_extension, installed_ide_clis, list_installed_extensions
+from droidshield.ide import CONTINUE_EXTENSION_ID, IDE_CLIS, IdeCli, detect_continue_extension_status, detect_ide_clis
+from droidshield.ide import install_continue_extension, installed_ide_clis, list_installed_extensions
 
 
 def test_detects_known_ide_clis_without_crashing_when_missing():

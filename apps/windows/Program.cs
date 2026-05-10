@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace ProAiServer.Desktop;
+namespace DroidShield.Desktop;
 
 internal static class Program
 {
@@ -13,7 +13,7 @@ internal static class Program
     {
         try
         {
-            DesktopLog.Write("Starting Pro AI Server desktop host.");
+            DesktopLog.Write("Starting DroidShield desktop host.");
             ApplicationConfiguration.Initialize();
             using var server = LocalServer.EnsureRunning(Port);
             Application.Run(new MainForm(AppUri));
@@ -24,7 +24,7 @@ internal static class Program
             DesktopLog.Write("Fatal startup error: " + ex);
             MessageBox.Show(
                 ex.Message,
-                "Pro AI Server failed to start",
+                "DroidShield failed to start",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
             );
@@ -44,13 +44,13 @@ internal sealed class MainForm : Form
     public MainForm(Uri appUri)
     {
         _appUri = appUri;
-        Text = "Pro AI Server";
+        Text = "DroidShield";
         Width = 1280;
         Height = 820;
         MinimumSize = new Size(980, 640);
         StartPosition = FormStartPosition.CenterScreen;
 
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "pro-ai-server.ico");
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "droidshield.ico");
         if (File.Exists(iconPath))
         {
             Icon = new Icon(iconPath);
@@ -76,7 +76,7 @@ internal sealed class MainForm : Form
             DesktopLog.Write("WebView2 initialization error: " + ex);
             MessageBox.Show(
                 ex.Message,
-                "Pro AI Server window failed to load",
+                "DroidShield window failed to load",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
             );
@@ -112,7 +112,7 @@ internal sealed class LocalServer : IDisposable
             new ProcessStartInfo
             {
                 FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "py.exe"),
-                Arguments = $"-3.11 -m pro_ai_server.cli ui --port {port} --no-open",
+                Arguments = $"-3.11 -m droidshield.cli ui --port {port} --no-open",
                 WorkingDirectory = repoRoot,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -131,7 +131,7 @@ internal sealed class LocalServer : IDisposable
             Thread.Sleep(250);
         }
 
-        throw new InvalidOperationException("Pro AI Server UI did not start.");
+        throw new InvalidOperationException("DroidShield UI did not start.");
     }
 
     public void Dispose()
@@ -175,7 +175,7 @@ internal static class DesktopLog
 {
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ProAiServer",
+        "DroidShield",
         "desktop.log"
     );
 

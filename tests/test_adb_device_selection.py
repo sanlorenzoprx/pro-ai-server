@@ -1,4 +1,4 @@
-from pro_ai_server.adb import (
+from droidshield.adb import (
     AdbDeviceState,
     parse_adb_devices,
     parse_adb_device_state,

@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pro-ai-server"
+name = "droidshield"
 version = "0.1.0"
-description = "Turn a spare Android phone into a local AI server for coding workflows."
+description = "Isolated Android sandbox nodes for autonomous AI agents."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,13 +21,13 @@ dev = [
 ]
 
 [project.scripts]
-pro-ai-server = "pro_ai_server.cli:app"
+droidshield = "droidshield.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-pro_ai_server = ["embedded-tools/**", "ui/**"]
+droidshield = ["embedded-tools/**", "ui/**"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

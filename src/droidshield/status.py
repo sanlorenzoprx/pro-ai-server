@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pro_ai_server.adb import select_adb_device_from_output
-from pro_ai_server.ide import IdeExtensionStatus
-from pro_ai_server.ollama import OllamaServerStatus
+from droidshield.adb import select_adb_device_from_output
+from droidshield.ide import IdeExtensionStatus
+from droidshield.ollama import OllamaServerStatus
 
 
 USB_FORWARD_PORT = "tcp:11434"
+KNOWLEDGE_FORWARD_PORT = "tcp:8766"
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ def build_status_report(
 
 
 def render_status_report(report: ProAiStatus) -> tuple[str, ...]:
-    lines = ["Pro AI Server Status"]
+    lines = ["DroidShield Status"]
     for item in report.items:
         lines.append(f"{_status_label(item.ok)} {item.label}: {item.detail}")
     return tuple(lines)
@@ -64,10 +65,16 @@ def _tunnel_item(adb_forward_output: str | None, *, adb_path: str | None) -> Sta
     if not adb_path:
         return StatusItem("USB tunnel", None, "skipped because adb is unavailable")
     if not adb_forward_output:
-        return StatusItem("USB tunnel", False, "adb forward tcp:11434 is not active")
-    if USB_FORWARD_PORT in adb_forward_output:
-        return StatusItem("USB tunnel", True, "adb forward tcp:11434 is active")
-    return StatusItem("USB tunnel", False, "adb forward tcp:11434 is not active")
+        return StatusItem("USB tunnel", False, "adb forward tcp:11434 and tcp:8766 are not active")
+    ollama_ready = USB_FORWARD_PORT in adb_forward_output
+    knowledge_ready = KNOWLEDGE_FORWARD_PORT in adb_forward_output
+    if ollama_ready and knowledge_ready:
+        return StatusItem("USB tunnel", True, "adb forward tcp:11434 and tcp:8766 are active")
+    if ollama_ready:
+        return StatusItem("USB tunnel", False, "adb forward tcp:8766 for phone knowledge is not active")
+    if knowledge_ready:
+        return StatusItem("USB tunnel", False, "adb forward tcp:11434 for Ollama is not active")
+    return StatusItem("USB tunnel", False, "adb forward tcp:11434 and tcp:8766 are not active")
 
 
 def _server_item(ollama_status: OllamaServerStatus) -> StatusItem:

@@ -43,22 +43,22 @@ def test_cli_workflow_documents_windows_first_flow_and_safety_claims():
     workflow = read_doc("docs/CLI_WORKFLOW.md")
 
     for command in (
-        "pro-ai-server doctor",
-        "pro-ai-server validate-platform-tools",
-        "pro-ai-server validate-release",
-        "pro-ai-server scan --serial",
-        "pro-ai-server termux-check",
-        "pro-ai-server generate-scripts",
-        "pro-ai-server push-scripts",
-        "pro-ai-server configure-continue --mode usb",
-        "pro-ai-server setup-tailscale",
-        "pro-ai-server server-endpoints",
-        "pro-ai-server status",
-        "pro-ai-server ui",
-        "pro-ai-server tunnel",
-        "pro-ai-server setup",
-        "pro-ai-server setup --execute --yes",
-        "pro-ai-server diagnose --output",
+        "droidshield doctor",
+        "droidshield validate-platform-tools",
+        "droidshield validate-release",
+        "droidshield scan --serial",
+        "droidshield termux-check",
+        "droidshield generate-scripts",
+        "droidshield push-scripts",
+        "droidshield configure-continue --mode usb",
+        "droidshield setup-tailscale",
+        "droidshield server-endpoints",
+        "droidshield status",
+        "droidshield ui",
+        "droidshield tunnel",
+        "droidshield setup",
+        "droidshield setup --execute --yes",
+        "droidshield diagnose --output",
     ):
         assert command in workflow
 
@@ -91,7 +91,7 @@ def test_troubleshooting_documents_phone_setup_and_mvp_failure_modes():
         "no device found",
         "unauthorized",
         "multiple devices require --serial",
-        "pro-ai-server termux-check",
+        "droidshield termux-check",
         "termux is missing",
         "termux:api is missing",
         "termux home is not initialized",
@@ -103,8 +103,8 @@ def test_troubleshooting_documents_phone_setup_and_mvp_failure_modes():
         "100.x.x.x",
         "bundled adb",
         "android studio",
-        "pro-ai-server validate-platform-tools",
-        "pro-ai-server validate-release",
+        "droidshield validate-platform-tools",
+        "droidshield validate-release",
         "no fastboot",
         "--serial",
         "termux:widget manual placement",
@@ -116,19 +116,19 @@ def test_release_doc_documents_windows_first_release_gates_and_smoke_flow():
     release = read_doc("docs/RELEASE.md")
 
     for expected in (
-        "pro-ai-server validate-release",
-        "pro-ai-server validate-platform-tools",
+        "droidshield validate-release",
+        "droidshield validate-platform-tools",
         "pytest",
         "ruff check .",
-        "pro-ai-server doctor",
+        "droidshield doctor",
         "bundled adb",
         "fastboot is not used",
         "fastboot.exe",
         "scripts/download-platform-tools.ps1",
         "android studio",
-        "pro-ai-server generate-scripts",
-        "pro-ai-server setup",
-        "pro-ai-server diagnose --output",
+        "droidshield generate-scripts",
+        "droidshield setup",
+        "droidshield diagnose --output",
     ):
         assert expected in release
 
@@ -140,7 +140,7 @@ def test_ci_runs_release_validation_and_core_build_gates():
         "python -m pip install -e \".[dev]\"",
         "ruff check .",
         "pytest",
-        "pro-ai-server validate-release",
+        "droidshield validate-release",
         "python -m pip wheel . --no-deps --wheel-dir dist",
     ):
         assert expected in ci

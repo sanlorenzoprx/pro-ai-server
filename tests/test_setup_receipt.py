@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from pro_ai_server.continue_config import ContinueConfigWriteResult
-from pro_ai_server.models import model_plan_for_profile
-from pro_ai_server.script_delivery import build_script_delivery_plan
-from pro_ai_server.setup_receipt import SetupReceipt, build_setup_receipt, render_setup_receipt
-from pro_ai_server.setup_workflow import plan_setup_workflow
-from pro_ai_server.termux_scripts import generate_termux_scripts
+from droidshield.continue_config import ContinueConfigWriteResult
+from droidshield.models import model_plan_for_profile
+from droidshield.script_delivery import build_script_delivery_plan
+from droidshield.setup_receipt import SetupReceipt, build_setup_receipt, render_setup_receipt
+from droidshield.setup_workflow import plan_setup_workflow
+from droidshield.termux_scripts import generate_termux_scripts
 
 
 def test_builds_minimal_plan_only_receipt():
@@ -26,7 +26,7 @@ def test_receipt_captures_continue_config_backup():
     plan = plan_setup_workflow()
     result = ContinueConfigWriteResult(
         config_path=Path("home") / ".continue" / "config.yaml",
-        backup_path=Path("home") / ".continue" / "config.yaml.pro-ai-server-backup-20260502-131415",
+        backup_path=Path("home") / ".continue" / "config.yaml.droidshield-backup-20260502-131415",
         api_base="http://localhost:11434",
     )
 
@@ -48,7 +48,7 @@ def test_receipt_captures_script_push_and_tunnel():
         script_dir=Path("out") / "termux",
     )
     delivery_plan = build_script_delivery_plan(local_generated_termux_dir=Path("out") / "termux", serial="device-123")
-    written_paths = (Path("out") / "termux" / "start-pro-ai-server.sh", Path("out") / "termux" / "bootstrap.sh")
+    written_paths = (Path("out") / "termux" / "start-droidshield.sh", Path("out") / "termux" / "bootstrap.sh")
 
     receipt = build_setup_receipt(
         termux_bundle=bundle,
@@ -63,9 +63,13 @@ def test_receipt_captures_script_push_and_tunnel():
     assert receipt.pushed_scripts is True
     assert receipt.tunnel_requested is True
     assert receipt.post_push_termux_commands == (
+        "termux-setup-storage",
+        "mkdir -p ~/.shortcuts/icons",
+        'cp -r "$HOME/storage/downloads/droidshield/termux/." "$HOME/"',
+        'chmod +x "$HOME/bootstrap.sh" "$HOME/setup-ollama-debian.sh" "$HOME/pro-ai-knowledge-server.py" "$HOME/start-droidshield.sh" "$HOME/install-models.sh" "$HOME/.shortcuts/Start DroidShield"',
         "~/bootstrap.sh",
         "~/install-models.sh",
-        "~/start-pro-ai-server.sh",
+        "~/start-droidshield.sh",
     )
     assert any(item.label == "Run in Termux" for item in receipt.next_steps)
     assert any("Termux:Widget" in note for note in receipt.notes)
@@ -98,7 +102,7 @@ def test_render_setup_receipt_is_deterministic_text():
     rendered = render_setup_receipt(receipt)
 
     assert rendered == (
-        "Pro AI Server setup receipt\n"
+        "DroidShield setup receipt\n"
         "\n"
         "Summary\n"
         "- Mode: usb\n"

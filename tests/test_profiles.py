@@ -1,4 +1,4 @@
-from pro_ai_server.cli import select_model_profile
+from droidshield.cli import select_model_profile
 
 
 def test_lightweight_profile():

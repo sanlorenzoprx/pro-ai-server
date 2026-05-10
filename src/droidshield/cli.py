@@ -7,38 +7,42 @@ from dataclasses import dataclass
 import typer
 from rich.console import Console
 
-from pro_ai_server.adb import select_adb_device_from_output
-from pro_ai_server.continue_config import exposure_warnings, write_continue_config
-from pro_ai_server.device_scan import (
+from droidshield.adb import select_adb_device_from_output
+from droidshield.continue_config import exposure_warnings, write_continue_config
+from droidshield.device_scan import (
     DeviceScanOutputs,
     build_device_profile_from_scan_outputs,
     build_device_scan_commands,
     build_device_scan_summary_lines,
 )
-from pro_ai_server.diagnostics import build_diagnostics_report, write_diagnostics_report
-from pro_ai_server.ide import detect_ide_clis
-from pro_ai_server.ide import detect_continue_extension_status
-from pro_ai_server.ide import install_continue_extension
-from pro_ai_server.ide import installed_ide_clis
-from pro_ai_server.models import model_plan_for_profile, model_plan_for_ram
-from pro_ai_server.ollama import assess_model_inventory, assess_ollama_server_status, build_ollama_tags_command
-from pro_ai_server.packaging import validate_windows_platform_tools_layouts
-from pro_ai_server.release_validation import validate_release_layout
-from pro_ai_server.script_delivery import build_script_delivery_plan
-from pro_ai_server.setup_receipt import build_setup_receipt, render_setup_receipt
-from pro_ai_server.setup_workflow import plan_setup_workflow
-from pro_ai_server.status import build_status_report, render_status_report
-from pro_ai_server.termux_readiness import (
+from droidshield.diagnostics import build_diagnostics_report, write_diagnostics_report
+from droidshield.ide import detect_ide_clis
+from droidshield.ide import detect_continue_extension_status
+from droidshield.ide import install_continue_extension
+from droidshield.ide import installed_ide_clis
+from droidshield.models import model_plan_for_profile, model_plan_for_ram
+from droidshield.ollama import assess_model_inventory, assess_ollama_server_status, build_ollama_tags_command
+from droidshield.packaging import validate_windows_platform_tools_layouts
+from droidshield.agentic import AgenticWorkItem, dry_run_agentic_workflow, plan_agentic_development_loop
+from droidshield.gateway import SandboxGateway, SandboxTask
+from droidshield.monitoring import AuditLog
+from droidshield.policy import load_policy, write_default_policy
+from droidshield.release_validation import validate_release_layout
+from droidshield.script_delivery import build_script_delivery_plan
+from droidshield.setup_receipt import build_setup_receipt, render_setup_receipt
+from droidshield.setup_workflow import plan_setup_workflow
+from droidshield.status import build_status_report, render_status_report
+from droidshield.termux_readiness import (
     assess_termux_readiness,
     build_termux_package_info_command,
     build_termux_readiness_commands,
 )
-from pro_ai_server.termux_scripts import generate_termux_scripts, write_termux_scripts
-from pro_ai_server.tailscale import build_tailscale_install_plan
-from pro_ai_server.tailscale import tailscale_android_installed
-from pro_ai_server.tailscale import tailscale_host_installed
+from droidshield.termux_scripts import generate_termux_scripts, write_termux_scripts
+from droidshield.tailscale import build_tailscale_install_plan
+from droidshield.tailscale import tailscale_android_installed
+from droidshield.tailscale import tailscale_host_installed
 
-app = typer.Typer(help="Pro AI Server: Android phone local AI server manager.")
+app = typer.Typer(help="DroidShield: isolated Android sandboxes for autonomous AI agents.")
 console = Console()
 
 
@@ -106,6 +110,12 @@ def run_optional_command(command: list[str]) -> str:
         return exc.stdout or exc.stderr
 
 
+def _load_gateway(policy_path: Path | None = None, audit_path: Path | None = None) -> SandboxGateway:
+    policy = load_policy(policy_path) if policy_path else None
+    audit_log = AuditLog(audit_path) if audit_path else None
+    return SandboxGateway(policy=policy, audit_log=audit_log)
+
+
 def adb_command(adb: str, args: list[str], serial: str | None = None) -> list[str]:
     if serial:
         return [adb, "-s", serial, *args]
@@ -145,9 +155,91 @@ def select_model_profile(ram_gb: float) -> ModelProfile:
 
 
 @app.command()
+def architecture() -> None:
+    """Show the DroidShield autonomous sandbox architecture."""
+    console.print("[bold]DroidShield Architecture[/bold]")
+    console.print("AI Agent / MCP Client -> Gateway -> Policy Engine -> Android Sandbox Node")
+    console.print("")
+    console.print("Agentic loop:")
+    for index, phase in enumerate(plan_agentic_development_loop(), start=1):
+        console.print(f"{index}. {phase}")
+    console.print("")
+    console.print("Docs: docs/ARCHITECTURE.md and docs/THREAT_MODEL.md")
+
+
+@app.command("init-policy")
+def init_policy(
+    output: Path = typer.Option(Path("policies") / "default.json", help="Policy file to create."),
+) -> None:
+    """Write the default DroidShield sandbox policy."""
+    written = write_default_policy(output)
+    console.print(f"[green]Wrote policy:[/green] {written}")
+
+
+@app.command("policy-check")
+def policy_check(
+    command: str = typer.Argument(..., help="Command to evaluate before sandbox execution."),
+    policy: Path | None = typer.Option(None, "--policy", help="Optional JSON policy file."),
+) -> None:
+    """Evaluate a command against the sandbox policy."""
+    gateway = _load_gateway(policy)
+    decision = gateway.policy.evaluate_command(command)
+    color = "green" if decision.allowed else "red"
+    console.print(f"[{color}]{'Allowed' if decision.allowed else 'Blocked'}[/{color}]: {decision.reason}")
+    if decision.matched_rule:
+        console.print(f"Rule: {decision.matched_rule}")
+    if not decision.allowed:
+        raise typer.Exit(code=1)
+
+
+@app.command("sandbox-run")
+def sandbox_run(
+    command: str = typer.Argument(..., help="Command requested by an AI agent."),
+    agent: str = typer.Option("manual", "--agent", help="Agent name, tool, or integration."),
+    node: str | None = typer.Option(None, "--node", help="Preferred Android sandbox node id."),
+    objective: str = typer.Option("", "--objective", help="Human-readable task objective."),
+    policy: Path | None = typer.Option(None, "--policy", help="Optional JSON policy file."),
+    audit_log: Path | None = typer.Option(Path("logs") / "droidshield-audit.jsonl", "--audit-log"),
+) -> None:
+    """Submit a sandbox task through the gateway policy path."""
+    gateway = _load_gateway(policy, audit_log)
+    receipt = gateway.submit(SandboxTask(agent=agent, command=command, objective=objective, node=node))
+    color = "green" if receipt.accepted else "red"
+    console.print(f"[{color}]{receipt.status.upper()}[/{color}] {receipt.task_id}")
+    console.print(f"Agent: {receipt.agent}")
+    console.print(f"Node: {receipt.node or 'none'}")
+    console.print(f"Decision: {receipt.decision.reason}")
+    if audit_log:
+        console.print(f"Audit log: {audit_log}")
+    if not receipt.accepted:
+        raise typer.Exit(code=1)
+
+
+@app.command("agentic-plan")
+def agentic_plan(
+    objective: str = typer.Argument(..., help="Autonomous development objective."),
+    command: list[str] = typer.Option(..., "--command", "-c", help="Proposed command to evaluate."),
+    agent: str = typer.Option("codex", "--agent", help="Agent name, tool, or integration."),
+    policy: Path | None = typer.Option(None, "--policy", help="Optional JSON policy file."),
+) -> None:
+    """Dry-run an autonomous development workflow through DroidShield gates."""
+    gateway = _load_gateway(policy)
+    work_item = AgenticWorkItem(agent=agent, objective=objective, proposed_commands=tuple(command))
+    results = dry_run_agentic_workflow(work_item, gateway)
+    for result in results:
+        color = "green" if result.status in {"ready", "accepted"} else "yellow"
+        if result.status == "blocked":
+            color = "red"
+        task = f" ({result.task_id})" if result.task_id else ""
+        console.print(f"[{color}]{result.phase}[/{color}] {result.status}{task}: {result.message}")
+    if any(result.status == "blocked" for result in results):
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def doctor() -> None:
     """Check host computer requirements."""
-    console.print("[bold]Pro AI Server Doctor[/bold]")
+    console.print("[bold]DroidShield Doctor[/bold]")
 
     adb_path = resolve_adb()
     if adb_path:
@@ -171,7 +263,7 @@ def doctor() -> None:
             elif extension_status.installed is False:
                 console.print(
                     "  [yellow]Missing[/yellow] Continue extension not installed. "
-                    f"Run `pro-ai-server install-continue-extension --ide {ide.command}`."
+                    f"Run `droidshield install-continue-extension --ide {ide.command}`."
                 )
             elif extension_status.error:
                 console.print(f"  [yellow]Unknown[/yellow] Continue extension status: {extension_status.error}")
@@ -327,7 +419,7 @@ def configure_continue(
     else:
         console.print(
             "[yellow]Warning:[/yellow] No supported IDE with the Continue extension was detected. "
-            "Install it with `pro-ai-server install-continue-extension --ide cursor` "
+            "Install it with `droidshield install-continue-extension --ide cursor` "
             "or the equivalent IDE CLI before using this config."
         )
 
@@ -420,7 +512,7 @@ def server_endpoints(
     console.print(f"  URL: {ollama_base}")
     console.print(f"  Models: {ollama_base}/api/tags")
     console.print(f"  Generate: {ollama_base}/api/generate")
-    console.print("  Test: pro-ai-server server-check --profile lightweight")
+    console.print("  Test: droidshield server-check --profile lightweight")
 
     if check:
         tags_output = run_optional_command(list(build_ollama_tags_command(ollama_base)))
@@ -476,10 +568,47 @@ def ui(
     port: int = typer.Option(8765, help="Port for the local web UI."),
     open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the dashboard in the default browser."),
 ) -> None:
-    """Launch the local Pro AI Server dashboard."""
-    from pro_ai_server.web import serve_ui
+    """Launch the local DroidShield dashboard."""
+    from droidshield.web import serve_ui
 
     serve_ui(host=host, port=port, open_browser=open_browser)
+
+
+@app.command("gateway-api")
+def gateway_api(
+    host: str = typer.Option("127.0.0.1", help="Host interface for the DroidShield gateway API."),
+    port: int = typer.Option(8770, help="Port for the DroidShield gateway API."),
+) -> None:
+    """Launch the DroidShield HTTP gateway API."""
+    from droidshield.gateway_api import serve_gateway_api
+
+    serve_gateway_api(host=host, port=port)
+
+
+@app.command("knowledge-add")
+def knowledge_add(
+    source: Path = typer.Argument(..., help="Markdown file to upload into the phone-hosted knowledge vault."),
+    api_base: str = typer.Option("http://127.0.0.1:8766", help="Forwarded phone knowledge API base URL."),
+) -> None:
+    """Upload one markdown source to the phone-hosted knowledge base and ingest it."""
+    from droidshield.web import add_phone_knowledge_source
+
+    if not source.exists() or not source.is_file():
+        console.print(f"[red]Markdown file not found:[/red] {source}")
+        raise typer.Exit(code=1)
+    if source.suffix.lower() != ".md":
+        console.print("[red]Only .md files are supported for this first knowledge source flow.[/red]")
+        raise typer.Exit(code=1)
+
+    result = add_phone_knowledge_source(source.name, source.read_text(encoding="utf-8"), api_base)
+    if not result.get("ok"):
+        console.print(f"[red]{result.get('message', 'Knowledge upload failed.')}[/red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"[green]Added source:[/green] {result.get('path', source.name)}")
+    ingest = result.get("ingest")
+    if isinstance(ingest, dict):
+        console.print(f"Wiki page: {ingest.get('page', 'created')}")
 
 
 def _print_endpoint_status(ok: bool, label: str) -> None:
@@ -682,13 +811,6 @@ def setup(
 
             if push:
                 delivery_plan = build_script_delivery_plan(output_dir / "generated" / "termux", remote_home, selected_serial)
-                run_command(
-                    adb_command(
-                        adb,
-                        ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts/icons"],
-                        selected_serial,
-                    )
-                )
                 for command in delivery_plan.commands:
                     run_command([adb, *list(command[1:])])
                 console.print(f"[green]Pushed Termux scripts to device {selected_serial}.[/green]")
@@ -698,8 +820,9 @@ def setup(
 
             if create_usb_tunnel is not False and plan.mode == "usb":
                 run_command(adb_command(adb, ["forward", "tcp:11434", "tcp:11434"], selected_serial))
+                run_command(adb_command(adb, ["forward", "tcp:8766", "tcp:8766"], selected_serial))
                 tunnel_requested = True
-                console.print(f"[green]ADB forward tunnel requested for device {selected_serial}.[/green]")
+                console.print(f"[green]ADB forward tunnels requested for device {selected_serial}.[/green]")
         receipt = build_setup_receipt(
             workflow_plan=plan,
             continue_result=continue_result,
@@ -738,9 +861,6 @@ def push_scripts(
     try:
         selected_serial = select_device_serial(adb, serial)
         plan = build_script_delivery_plan(generated_termux_dir, remote_home, selected_serial)
-        run_command(
-            adb_command(adb, ["shell", "mkdir", "-p", f"{remote_home.rstrip('/')}/.shortcuts/icons"], selected_serial)
-        )
         for command in plan.commands:
             run_command([adb, *list(command[1:])])
     except CommandError as exc:
@@ -769,7 +889,10 @@ def tunnel(serial: str | None = typer.Option(None, help="ADB device serial to us
 
     try:
         selected_serial = select_device_serial(adb, serial)
-        output = run_command(adb_command(adb, ["forward", "tcp:11434", "tcp:11434"], selected_serial))
+        outputs = [
+            run_command(adb_command(adb, ["forward", "tcp:11434", "tcp:11434"], selected_serial)),
+            run_command(adb_command(adb, ["forward", "tcp:8766", "tcp:8766"], selected_serial)),
+        ]
     except CommandError as exc:
         console.print("[red]ADB forward tunnel failed.[/red]")
         console.print(str(exc))
@@ -778,7 +901,8 @@ def tunnel(serial: str | None = typer.Option(None, help="ADB device serial to us
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from exc
 
-    console.print(f"[green]ADB forward tunnel requested for device {selected_serial} on port 11434.[/green]")
+    console.print(f"[green]ADB forward tunnels requested for device {selected_serial} on ports 11434 and 8766.[/green]")
+    output = "\n".join(filter(None, outputs))
     if output:
         console.print(output)
 

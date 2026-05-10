@@ -1,5 +1,5 @@
-from pro_ai_server.models import ModelPlan, model_plan_for_profile
-from pro_ai_server.ollama import (
+from droidshield.models import ModelPlan, model_plan_for_profile
+from droidshield.ollama import (
     assess_model_inventory,
     assess_ollama_server_status,
     build_ollama_tags_command,

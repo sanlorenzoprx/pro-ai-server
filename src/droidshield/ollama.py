@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from pro_ai_server.models import ModelPlan
+from droidshield.models import ModelPlan
 
 
 Command = tuple[str, ...]

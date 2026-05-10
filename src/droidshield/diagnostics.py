@@ -10,8 +10,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from pro_ai_server import __version__
-from pro_ai_server.hardware import parse_battery_dump, parse_data_free_storage_gb, parse_meminfo_ram_gb
+from droidshield import __version__
+from droidshield.hardware import parse_battery_dump, parse_data_free_storage_gb, parse_meminfo_ram_gb
 
 
 IDE_COMMANDS = ("code", "cursor", "codium", "windsurf")
@@ -131,7 +131,7 @@ def build_diagnostics_report(
     host_lines = [
         f"Python: {sys.version.split()[0]}",
         f"OS: {platform.platform()}",
-        f"Pro AI Server: {__version__}",
+        f"DroidShield: {__version__}",
         f"ADB path: {redact_sensitive_paths(adb_path) if adb_path else 'not found'}",
         "IDE CLIs:",
     ]
@@ -184,7 +184,7 @@ def build_diagnostics_report(
 
     report = "\n\n".join(
         [
-            "# Pro AI Server Diagnostics",
+            "# DroidShield Diagnostics",
             _section("Host", host_lines),
             _section("Phone", phone_lines),
             _section("Server", server_lines),

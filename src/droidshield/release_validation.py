@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from pro_ai_server.packaging import validate_windows_platform_tools_layouts
+from droidshield.packaging import validate_windows_platform_tools_layouts
 
 
 PYPROJECT_PATH = Path("pyproject.toml")
@@ -51,15 +51,15 @@ def pyproject_includes_embedded_tools_package_data(pyproject_text: str) -> bool:
 
         if "=" in stripped:
             current_key, value = (part.strip() for part in stripped.split("=", maxsplit=1))
-            if current_key == "pro_ai_server" and PACKAGE_DATA_PATTERN in value:
+            if current_key == "droidshield" and PACKAGE_DATA_PATTERN in value:
                 return True
             if "]" in value:
                 current_key = None
             continue
 
-        if current_key == "pro_ai_server" and PACKAGE_DATA_PATTERN in stripped:
+        if current_key == "droidshield" and PACKAGE_DATA_PATTERN in stripped:
             return True
-        if current_key == "pro_ai_server" and "]" in stripped:
+        if current_key == "droidshield" and "]" in stripped:
             current_key = None
 
     return False

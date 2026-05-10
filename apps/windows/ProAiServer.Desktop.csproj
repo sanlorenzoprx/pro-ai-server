@@ -5,7 +5,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationIcon>..\..\assets\icons\pro-ai-server.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\assets\icons\droidshield.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 
@@ -14,9 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\assets\icons\pro-ai-server.ico">
+    <Content Include="..\..\assets\icons\droidshield.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>pro-ai-server.ico</Link>
+      <Link>droidshield.ico</Link>
     </Content>
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-from pro_ai_server.hardware import assess_device_profile, select_model_profile
+from droidshield.hardware import assess_device_profile, select_model_profile
 
 
 def test_lightweight_profile_under_5gb():

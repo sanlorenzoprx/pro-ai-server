@@ -14,7 +14,7 @@ $ExtractRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("platform-tools-" + 
 $SourcePlatformTools = Join-Path $ExtractRoot "platform-tools"
 $DestinationDirs = @(
     (Join-Path $RepoRoot "embedded-tools\windows\platform-tools"),
-    (Join-Path $RepoRoot "src\pro_ai_server\embedded-tools\windows\platform-tools")
+    (Join-Path $RepoRoot "src\droidshield\embedded-tools\windows\platform-tools")
 )
 
 try {

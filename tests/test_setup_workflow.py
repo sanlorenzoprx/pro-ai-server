@@ -1,6 +1,6 @@
 import pytest
 
-from pro_ai_server.setup_workflow import plan_setup_workflow
+from droidshield.setup_workflow import plan_setup_workflow
 
 
 def step_keys(plan):

@@ -9,13 +9,13 @@ Use these checks when the Windows host, Android phone, Termux, Ollama, or Contin
 Run:
 
 ```powershell
-pro-ai-server doctor
+droidshield doctor
 adb devices
 ```
 
 Confirm the phone is connected by USB, USB debugging is enabled in Android developer options, and the cable supports data. Reconnect the phone, then rerun the command that failed.
 
-Release builds should use bundled ADB from `embedded-tools/windows/platform-tools/adb.exe`. If bundled ADB is missing or invalid, run `pro-ai-server validate-platform-tools`. As a fallback for development machines, install Android Studio or the Android SDK Platform Tools and make sure `adb.exe` is on `PATH`.
+Release builds should use bundled ADB from `embedded-tools/windows/platform-tools/adb.exe`. If bundled ADB is missing or invalid, run `droidshield validate-platform-tools`. As a fallback for development machines, install Android Studio or the Android SDK Platform Tools and make sure `adb.exe` is on `PATH`.
 
 The MVP has no fastboot flow: fastboot is not used, and `fastboot.exe` is not required.
 
@@ -28,10 +28,10 @@ If `adb devices` shows `unauthorized`, unlock the phone and accept the USB debug
 When more than one Android device or emulator is visible, use the serial from `adb devices`:
 
 ```powershell
-pro-ai-server scan --serial <device-serial>
-pro-ai-server termux-check --serial <device-serial>
-pro-ai-server push-scripts --serial <device-serial>
-pro-ai-server tunnel --serial <device-serial>
+droidshield scan --serial <device-serial>
+droidshield termux-check --serial <device-serial>
+droidshield push-scripts --serial <device-serial>
+droidshield tunnel --serial <device-serial>
 ```
 
 ## Termux Readiness
@@ -39,12 +39,12 @@ pro-ai-server tunnel --serial <device-serial>
 Run this before pushing scripts:
 
 ```powershell
-pro-ai-server termux-check
+droidshield termux-check
 ```
 
 If Termux is missing, install Termux from F-Droid or GitHub, then open it once. If Termux:API is missing, install Termux:API, then rerun `termux-check`. If Termux home is not initialized, open Termux once on the phone so `/data/data/com.termux/files/home` exists.
 
-Termux:Widget manual placement is still required. Install Termux:Widget, confirm the generated `Start Pro AI Server` shortcut is in `~/.shortcuts`, confirm the generated icon is in `~/.shortcuts/icons/Start Pro AI Server.png`, then add the widget or shortcut from the Android home screen. If the shortcut already existed before the icon was added, remove it from the home screen and add it again.
+Termux:Widget manual placement is still required. Install Termux:Widget, confirm the generated `Start DroidShield` shortcut is in `~/.shortcuts`, confirm the generated icon is in `~/.shortcuts/icons/Start DroidShield.png`, then add the widget or shortcut from the Android home screen. If the shortcut already existed before the icon was added, remove it from the home screen and add it again.
 
 ## Ollama and Models
 
@@ -53,7 +53,7 @@ Termux:Widget manual placement is still required. Install Termux:Widget, confirm
 For USB mode, start the generated script inside Termux, then create the forward tunnel:
 
 ```powershell
-pro-ai-server tunnel
+droidshield tunnel
 ```
 
 Confirm Continue points to `http://localhost:11434`. In USB mode, Ollama should bind to `127.0.0.1:11434` on the phone and Windows reaches it through `adb forward tcp:11434 tcp:11434`.
@@ -68,14 +68,14 @@ Run the generated model installer inside Termux:
 ~/install-models.sh
 ```
 
-If Continue reports missing models, compare the model names in `%USERPROFILE%\.continue\config.yaml` with `ollama list` inside Termux. Re-run `pro-ai-server generate-scripts --mode usb` if you changed the profile or model plan.
+If Continue reports missing models, compare the model names in `%USERPROFILE%\.continue\config.yaml` with `ollama list` inside Termux. Re-run `droidshield generate-scripts --mode usb` if you changed the profile or model plan.
 
 ## Continue Configuration
 
-`pro-ai-server configure-continue` writes `%USERPROFILE%\.continue\config.yaml`. When an existing Continue config is present, the Continue backup is written next to it with this filename pattern:
+`droidshield configure-continue` writes `%USERPROFILE%\.continue\config.yaml`. When an existing Continue config is present, the Continue backup is written next to it with this filename pattern:
 
 ```text
-config.yaml.pro-ai-server-backup-YYYYMMDD-HHMMSS
+config.yaml.droidshield-backup-YYYYMMDD-HHMMSS
 ```
 
 Keep that backup if you need to restore previous Continue settings.
@@ -87,14 +87,14 @@ USB mode is the safest default because Continue uses `http://localhost:11434` th
 Use LAN only on trusted networks:
 
 ```powershell
-pro-ai-server configure-continue --mode lan --host 192.168.1.50
+droidshield configure-continue --mode lan --host 192.168.1.50
 ```
 
 For Tailscale, prefer the private Tailscale hostname or the `100.x.x.x` Tailscale IP:
 
 ```powershell
-pro-ai-server configure-continue --mode tailscale --host pro-ai-phone
-pro-ai-server configure-continue --mode tailscale --host 100.x.x.x
+droidshield configure-continue --mode tailscale --host pro-ai-phone
+droidshield configure-continue --mode tailscale --host 100.x.x.x
 ```
 
 ## Release Validation
@@ -102,7 +102,7 @@ pro-ai-server configure-continue --mode tailscale --host 100.x.x.x
 Before publishing or handing off a build, run:
 
 ```powershell
-pro-ai-server validate-release
+droidshield validate-release
 ```
 
-`validate-release` checks bundled ADB runtime files, package data for embedded tools, and CI gates. Use `pro-ai-server validate-platform-tools` for a narrower bundled ADB validation when troubleshooting host ADB problems.
+`validate-release` checks bundled ADB runtime files, package data for embedded tools, and CI gates. Use `droidshield validate-platform-tools` for a narrower bundled ADB validation when troubleshooting host ADB problems.

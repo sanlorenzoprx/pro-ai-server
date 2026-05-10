@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pro AI Server</title>
-    <link rel="icon" type="image/png" href="/pro-ai-server.png?v=4" />
-    <link rel="apple-touch-icon" href="/pro-ai-server.png?v=4" />
+    <title>DroidShield</title>
+    <link rel="icon" type="image/png" href="/droidshield.png?v=4" />
+    <link rel="apple-touch-icon" href="/droidshield.png?v=4" />
     <link rel="manifest" href="/manifest.webmanifest?v=4" />
-    <link rel="stylesheet" href="/styles.css?v=4" />
+    <link rel="stylesheet" href="/styles.css?v=12" />
   </head>
   <body>
     <div class="app-shell">
@@ -17,20 +17,22 @@
             <span></span>
           </div>
           <div>
-            <h1>Pro AI Server</h1>
+            <h1>DroidShield</h1>
             <p>Android local AI control room</p>
           </div>
         </div>
         <nav class="nav-stack" aria-label="Primary">
-          <a class="active" href="#status" data-view-link="status">Status</a>
-          <a href="#endpoints" data-view-link="endpoints">Endpoints</a>
-          <a href="#setup" data-view-link="setup">Setup</a>
-          <a href="#diagnostics" data-view-link="diagnostics">Diagnostics</a>
+          <a class="active" href="#status" data-view-link="status">
+            <span class="nav-icon status-nav-icon" aria-hidden="true">
+              <span class="signal-dot unknown" id="navStatusSignal"></span>
+            </span>
+            <span>Status</span>
+          </a>
+          <a href="#knowledge" data-view-link="knowledge">
+            <span class="nav-icon brain-nav-icon" aria-hidden="true"></span>
+            <span>2nd Brain</span>
+          </a>
         </nav>
-        <div class="sidebar-status">
-          <span class="signal-dot unknown" id="sidebarSignal"></span>
-          <span id="sidebarStatus">Checking system</span>
-        </div>
       </aside>
 
       <main class="workspace">
@@ -107,6 +109,84 @@
           </div>
         </section>
 
+        <section class="split-layout view-section" id="knowledge" data-view-section="knowledge" hidden>
+          <div class="panel knowledge-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Phone-hosted 2nd Brain</p>
+                <h3>2nd Brain</h3>
+              </div>
+              <span class="status-pill" id="knowledgePill">Checking</span>
+            </div>
+            <div class="brain-hero">
+              <div>
+                <span class="brain-count-label">Sources</span>
+                <strong id="sourceCount">0</strong>
+              </div>
+              <p id="brainSummary">Your phone is building a local markdown memory from sources and quick captures.</p>
+            </div>
+            <div class="brief-grid">
+              <article>
+                <div>
+                  <span>Daily brief</span>
+                  <strong id="dailyBriefPath">Not created yet</strong>
+                </div>
+                <button class="read-brief-button" id="dailyReadButton" type="button" disabled>Read</button>
+              </article>
+              <article>
+                <div>
+                  <span>Weekly synthesis</span>
+                  <strong id="weeklyBriefPath">Not created yet</strong>
+                </div>
+                <button class="read-brief-button" id="weeklyReadButton" type="button" disabled>Read</button>
+              </article>
+            </div>
+            <div class="brain-reader" id="brainReader" hidden>
+              <div class="brain-reader-heading">
+                <div>
+                  <p class="eyebrow" id="brainReaderPath">Markdown page</p>
+                  <h4 id="brainReaderTitle">2nd Brain page</h4>
+                </div>
+                <button class="reader-close-button" id="brainReaderClose" type="button" aria-label="Close reader">Close</button>
+              </div>
+              <pre id="brainReaderContent"></pre>
+            </div>
+            <div class="recent-sources" id="recentSources"></div>
+          </div>
+
+          <div class="panel brain-workbench">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Add source</p>
+                <h3>Send markdown to phone</h3>
+              </div>
+              <button class="info-button" id="brainInfoButton" type="button" aria-label="How 2nd Brain works">i</button>
+            </div>
+            <div class="info-note" id="brainInfoNote" hidden>
+              Markdown files are sent to the Android phone, saved as raw sources, indexed into SQLite, and summarized into wiki pages. The phone stays the source of truth; this desktop app is the control surface.
+            </div>
+            <div class="source-uploader">
+              <label class="file-picker" for="knowledgeFileInput">
+                <span id="knowledgeFileName">Choose markdown file</span>
+                <strong>Browse</strong>
+              </label>
+              <input id="knowledgeFileInput" type="file" accept=".md,text/markdown,text/plain" />
+              <div class="source-actions">
+                <button class="primary-button source-primary" id="knowledgeAddButton" data-busy-label="Adding">Add source</button>
+                <button class="source-secondary" id="knowledgeIngestButton" data-busy-label="Ingesting">Re-ingest</button>
+              </div>
+            </div>
+            <label class="field-label" for="quickCaptureText">Quick capture</label>
+            <textarea id="quickCaptureText" rows="4" placeholder="Save an idea, question, or note directly to the phone inbox."></textarea>
+            <div class="brain-actions">
+              <button id="quickCaptureButton" data-busy-label="Saving">Save capture</button>
+              <button id="dailyBriefButton" data-busy-label="Writing">Daily brief</button>
+              <button id="weeklySynthesisButton" data-busy-label="Writing">Weekly synthesis</button>
+            </div>
+            <pre id="knowledgeLog">Choose a markdown file to send it directly into the phone-hosted 2nd Brain.</pre>
+          </div>
+        </section>
+
         <section class="split-layout view-section" id="setup" data-view-section="setup" hidden>
           <div class="panel">
             <div class="panel-heading">
@@ -161,6 +241,6 @@
         </section>
       </main>
     </div>
-    <script src="/app.js?v=4"></script>
+    <script src="/app.js?v=12"></script>
   </body>
 </html>

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from pro_ai_server.termux_scripts import (
+from droidshield.termux_scripts import (
     generate_debian_ollama_setup_script,
     generate_start_script,
     generate_termux_scripts,
@@ -22,10 +22,11 @@ def test_generates_deterministic_termux_scripts_for_usb_mode():
     assert list(bundle.files) == [
         Path("generated/termux/bootstrap.sh"),
         Path("generated/termux/setup-ollama-debian.sh"),
-        Path("generated/termux/start-pro-ai-server.sh"),
+        Path("generated/termux/pro-ai-knowledge-server.py"),
+        Path("generated/termux/start-droidshield.sh"),
         Path("generated/termux/install-models.sh"),
-        Path("generated/termux/.shortcuts/Start Pro AI Server"),
-        Path("generated/termux/.shortcuts/icons/Start Pro AI Server.png"),
+        Path("generated/termux/.shortcuts/Start DroidShield"),
+        Path("generated/termux/.shortcuts/icons/Start DroidShield.png"),
         Path("generated/termux/ANDROID_OPTIMIZATION_CHECKLIST.txt"),
         Path("generated/termux/TERMUX_WIDGET_INSTRUCTIONS.txt"),
     ]
@@ -34,18 +35,36 @@ def test_generates_deterministic_termux_scripts_for_usb_mode():
         "set -euo pipefail\n"
         "\n"
         "pkg update -y\n"
-        "pkg install -y proot-distro curl termux-api\n"
+        "pkg install -y proot-distro curl termux-api python\n"
         "proot-distro install debian\n"
         "\n"
         'echo "Debian is installed."\n'
         'echo "Next, install Ollama inside Debian with:"\n'
         'echo "  proot-distro login debian -- bash /data/data/com.termux/files/home/setup-ollama-debian.sh"\n'
         'echo "Then start the server with:"\n'
-        'echo "  ~/start-pro-ai-server.sh"\n'
+        'echo "  ~/start-droidshield.sh"\n'
     )
     assert bundle.files[Path("generated/termux/setup-ollama-debian.sh")] == generate_debian_ollama_setup_script()
+    assert "CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts" in bundle.files[
+        Path("generated/termux/pro-ai-knowledge-server.py")
+    ]
+    assert 'parsed.path == "/api/knowledge/sources"' in bundle.files[
+        Path("generated/termux/pro-ai-knowledge-server.py")
+    ]
+    assert 'parsed.path == "/api/knowledge/captures"' in bundle.files[
+        Path("generated/termux/pro-ai-knowledge-server.py")
+    ]
+    assert 'parsed.path == "/api/knowledge/daily"' in bundle.files[
+        Path("generated/termux/pro-ai-knowledge-server.py")
+    ]
+    assert 'parsed.path == "/api/knowledge/pages"' in bundle.files[
+        Path("generated/termux/pro-ai-knowledge-server.py")
+    ]
     assert "export OLLAMA_HOST=127.0.0.1:11434; ollama serve" in bundle.files[
-        Path("generated/termux/start-pro-ai-server.sh")
+        Path("generated/termux/start-droidshield.sh")
+    ]
+    assert 'python "$HOME/pro-ai-knowledge-server.py" --host 127.0.0.1 --port 8766' in bundle.files[
+        Path("generated/termux/start-droidshield.sh")
     ]
 
 
@@ -54,7 +73,7 @@ def test_bootstrap_and_debian_setup_include_real_ollama_install_path():
     bootstrap = bundle.files[Path("generated/termux/bootstrap.sh")]
     debian_setup = bundle.files[Path("generated/termux/setup-ollama-debian.sh")]
 
-    assert "pkg install -y proot-distro curl termux-api" in bootstrap
+    assert "pkg install -y proot-distro curl termux-api python" in bootstrap
     assert "proot-distro install debian" in bootstrap
     assert "proot-distro login debian -- bash /data/data/com.termux/files/home/setup-ollama-debian.sh" in bootstrap
     assert "apt-get install -y curl ca-certificates" in debian_setup
@@ -64,6 +83,7 @@ def test_bootstrap_and_debian_setup_include_real_ollama_install_path():
 def test_start_script_binds_lan_and_tailscale_to_all_interfaces():
     assert "export OLLAMA_HOST=0.0.0.0:11434; ollama serve" in generate_start_script("lan")
     assert "export OLLAMA_HOST=0.0.0.0:11434; ollama serve" in generate_start_script("tailscale")
+    assert 'python "$HOME/pro-ai-knowledge-server.py" --host 0.0.0.0 --port 8766' in generate_start_script("lan")
 
 
 def test_start_script_checks_termux_api_and_takes_wake_lock():
@@ -86,11 +106,11 @@ def test_install_models_deduplicates_model_pulls():
 
 def test_widget_shortcut_calls_start_script_and_instructions_are_generated():
     bundle = generate_termux_scripts("chat", "autocomplete")
-    shortcut_path = Path("generated/termux/.shortcuts/Start Pro AI Server")
+    shortcut_path = Path("generated/termux/.shortcuts/Start DroidShield")
 
     assert bundle.files[shortcut_path] == generate_widget_shortcut_script()
-    assert isinstance(bundle.files[Path("generated/termux/.shortcuts/icons/Start Pro AI Server.png")], bytes)
-    assert "~/start-pro-ai-server.sh" in bundle.files[shortcut_path]
+    assert isinstance(bundle.files[Path("generated/termux/.shortcuts/icons/Start DroidShield.png")], bytes)
+    assert "~/start-droidshield.sh" in bundle.files[shortcut_path]
     assert "Termux:Widget" in bundle.files[Path("generated/termux/TERMUX_WIDGET_INSTRUCTIONS.txt")]
     assert "manually" in bundle.files[Path("generated/termux/TERMUX_WIDGET_INSTRUCTIONS.txt")]
 

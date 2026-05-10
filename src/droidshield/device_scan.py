@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pro_ai_server import hardware
+from droidshield import hardware
 
 
 @dataclass(frozen=True)

@@ -12,7 +12,7 @@ REQUIRED_WINDOWS_PLATFORM_TOOL_FILES: tuple[str, ...] = (
 
 SOURCE_TREE_WINDOWS_PLATFORM_TOOLS = Path("embedded-tools") / "windows" / "platform-tools"
 PACKAGED_WINDOWS_PLATFORM_TOOLS = (
-    Path("src") / "pro_ai_server" / "embedded-tools" / "windows" / "platform-tools"
+    Path("src") / "droidshield" / "embedded-tools" / "windows" / "platform-tools"
 )
 
 

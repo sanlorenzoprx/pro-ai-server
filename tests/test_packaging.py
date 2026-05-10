@@ -1,4 +1,4 @@
-from pro_ai_server.packaging import (
+from droidshield.packaging import (
     PACKAGED_WINDOWS_PLATFORM_TOOLS,
     REQUIRED_WINDOWS_PLATFORM_TOOL_FILES,
     SOURCE_TREE_WINDOWS_PLATFORM_TOOLS,

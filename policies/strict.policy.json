@@ -1,0 +1,18 @@
+{
+  "name": "strict",
+  "allowed_commands": ["git", "python", "pytest", "ruff"],
+  "blocked_commands": ["sudo", "su", "rm -rf", "mkfs", "dd", "curl", "wget", "ssh", "scp"],
+  "blocked_paths": [
+    "~/.ssh",
+    "~/.aws",
+    "~/.config",
+    "/etc/passwd",
+    "/etc/shadow",
+    "/data/data"
+  ],
+  "network_allowlist": ["github.com"],
+  "max_runtime_seconds": 120,
+  "max_output_bytes": 500000,
+  "allow_shell": true,
+  "require_working_directory": true
+}

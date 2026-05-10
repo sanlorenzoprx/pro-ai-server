@@ -1,0 +1,21 @@
+{
+  "name": "demo",
+  "allowed_commands": ["git", "npm", "node", "python", "pytest", "echo", "sleep"],
+  "blocked_commands": ["sudo", "su", "rm -rf", "mkfs", "dd"],
+  "blocked_paths": [
+    "~/.ssh",
+    "~/.aws",
+    "/etc/passwd",
+    "/data/data"
+  ],
+  "network_allowlist": [
+    "github.com",
+    "registry.npmjs.org",
+    "pypi.org",
+    "files.pythonhosted.org"
+  ],
+  "max_runtime_seconds": 60,
+  "max_output_bytes": 250000,
+  "allow_shell": true,
+  "require_working_directory": true
+}

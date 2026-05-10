@@ -1,4 +1,4 @@
-from pro_ai_server.diagnostics import (
+from droidshield.diagnostics import (
     build_diagnostics_report,
     redact_sensitive_paths,
     summarize_battery_diagnostic,

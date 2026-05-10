@@ -5,7 +5,7 @@ import shutil
 
 import yaml
 
-from pro_ai_server.models import ModelPlan
+from droidshield.models import ModelPlan
 
 
 CONTINUE_CONFIG_NAME = "config.yaml"
@@ -47,7 +47,7 @@ def exposure_warnings(mode: str) -> list[str]:
 def continue_config_data(plan: ModelPlan, mode: str = "usb", host: str | None = None) -> dict[str, object]:
     api_base = api_base_for_mode(mode, host)
     return {
-        "name": "Pro AI Server Local",
+        "name": "DroidShield Local",
         "version": "0.0.1",
         "schema": "v1",
         "models": [
@@ -83,7 +83,7 @@ def default_continue_dir(home: Path | None = None) -> Path:
 
 def backup_path_for_config(config_path: Path, now: datetime | None = None) -> Path:
     timestamp = (now or datetime.now()).strftime(BACKUP_TIMESTAMP_FORMAT)
-    return config_path.with_name(f"{config_path.name}.pro-ai-server-backup-{timestamp}")
+    return config_path.with_name(f"{config_path.name}.droidshield-backup-{timestamp}")
 
 
 def write_continue_config(

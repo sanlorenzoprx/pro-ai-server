@@ -1,8 +1,8 @@
 import pytest
 import yaml
 
-from pro_ai_server.continue_config import api_base_for_mode, render_continue_config_yaml
-from pro_ai_server.models import model_plan_for_profile
+from droidshield.continue_config import api_base_for_mode, render_continue_config_yaml
+from droidshield.models import model_plan_for_profile
 
 
 def test_tailscale_hostname_is_accepted_for_api_base():

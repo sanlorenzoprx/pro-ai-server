@@ -3,7 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from pro_ai_server.termux_scripts import DEFAULT_SCRIPT_DIR, DEBIAN_OLLAMA_SETUP_SCRIPT, WIDGET_ICON_PATH, WIDGET_SHORTCUT_PATH
+from droidshield.termux_scripts import (
+    DEFAULT_SCRIPT_DIR,
+    DEBIAN_OLLAMA_SETUP_SCRIPT,
+    KNOWLEDGE_SERVER_SCRIPT,
+    WIDGET_ICON_PATH,
+    WIDGET_SHORTCUT_PATH,
+)
 
 
 Command = tuple[str, ...]
@@ -11,7 +17,8 @@ Command = tuple[str, ...]
 EXPECTED_TERMUX_SCRIPT_PATHS: tuple[Path, ...] = (
     Path("bootstrap.sh"),
     Path(DEBIAN_OLLAMA_SETUP_SCRIPT),
-    Path("start-pro-ai-server.sh"),
+    Path(KNOWLEDGE_SERVER_SCRIPT),
+    Path("start-droidshield.sh"),
     Path("install-models.sh"),
     WIDGET_SHORTCUT_PATH,
     WIDGET_ICON_PATH,
@@ -22,7 +29,8 @@ EXPECTED_TERMUX_SCRIPT_PATHS: tuple[Path, ...] = (
 EXECUTABLE_TERMUX_SCRIPT_PATHS: tuple[Path, ...] = (
     Path("bootstrap.sh"),
     Path(DEBIAN_OLLAMA_SETUP_SCRIPT),
-    Path("start-pro-ai-server.sh"),
+    Path(KNOWLEDGE_SERVER_SCRIPT),
+    Path("start-droidshield.sh"),
     Path("install-models.sh"),
     WIDGET_SHORTCUT_PATH,
 )
@@ -40,33 +48,39 @@ def build_script_delivery_plan(
     remote_termux_home: str = "/data/data/com.termux/files/home",
     serial: str | None = None,
 ) -> ScriptDeliveryPlan:
-    remote_home = _remote_path(remote_termux_home)
+    remote_staging = _remote_path("/sdcard/Download/droidshield/termux")
+    remote_staging_dirs = tuple(
+        sorted({str(remote_staging / _posix_relative(relative_path).parent) for relative_path in EXPECTED_TERMUX_SCRIPT_PATHS})
+    )
+    mkdir_commands = tuple(_adb_command(("shell", "mkdir", "-p", remote_dir), serial) for remote_dir in remote_staging_dirs)
     push_commands = tuple(
         _adb_command(
             (
                 "push",
                 str(local_generated_termux_dir / relative_path),
-                str(remote_home / _posix_relative(relative_path)),
+                str(remote_staging / _posix_relative(relative_path)),
             ),
             serial,
         )
         for relative_path in EXPECTED_TERMUX_SCRIPT_PATHS
     )
-    chmod_commands = tuple(
-        _adb_command(("shell", "chmod", "+x", str(remote_home / _posix_relative(relative_path))), serial)
-        for relative_path in EXECUTABLE_TERMUX_SCRIPT_PATHS
-    )
+    chmod_targets = " ".join(f'"$HOME/{relative_path.as_posix()}"' for relative_path in EXECUTABLE_TERMUX_SCRIPT_PATHS)
 
     return ScriptDeliveryPlan(
-        commands=push_commands + chmod_commands,
+        commands=mkdir_commands + push_commands,
         post_push_termux_commands=(
+            "termux-setup-storage",
+            "mkdir -p ~/.shortcuts/icons",
+            'cp -r "$HOME/storage/downloads/droidshield/termux/." "$HOME/"',
+            f"chmod +x {chmod_targets}",
             "~/bootstrap.sh",
             "~/install-models.sh",
-            "~/start-pro-ai-server.sh",
+            "~/start-droidshield.sh",
         ),
         instructions=(
-            "Run the post-push commands inside Termux after the files are pushed.",
-            "Install Termux:Widget and add the Start Pro AI Server shortcut from the Android home screen.",
+            "Run the post-push commands inside Termux after the files are pushed to Android Downloads.",
+            "Accept the Android storage permission prompt if Termux asks for it.",
+            "Install Termux:Widget and add the Start DroidShield shortcut from the Android home screen.",
             "Review ANDROID_OPTIMIZATION_CHECKLIST.txt on the device to reduce background interruptions.",
         ),
     )

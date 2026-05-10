@@ -1,8 +1,8 @@
-# Pro AI Server MVP Baseline
+# DroidShield MVP Baseline
 
 ## Purpose
 
-Build Pro AI Server as a transparent, test-driven installer and manager that
+Build DroidShield as a transparent, test-driven installer and manager that
 turns a spare Android phone into a local AI coding server for
 Continue-compatible IDEs such as VS Code, Cursor, VSCodium, Windsurf, and
 JetBrains.
@@ -12,7 +12,7 @@ The MVP must not depend on customers manually installing ADB.
 
 ## MVP Product Promise
 
-A developer can connect an Android phone, run Pro AI Server, and get:
+A developer can connect an Android phone, run DroidShield, and get:
 
 1. Hardware-aware model recommendations.
 2. A local Ollama server setup path for Termux.
@@ -50,7 +50,7 @@ gaps in this baseline. Fastboot remains out of scope for the MVP flow.
 ## Deferred Product Work
 
 - Windows tray status monitor: a small toolbar/tray indicator that reuses the
-  `pro-ai-server status` checks to show phone connection, USB tunnel, Ollama
+  `droidshield status` checks to show phone connection, USB tunnel, Ollama
   readiness, Continue-ready IDE integration, and active connection mode without
   opening a terminal.
 
@@ -183,7 +183,7 @@ Before writing config:
 
 1. Create `%USERPROFILE%\.continue` if missing.
 2. If `config.yaml` exists, copy it to
-   `config.yaml.pro-ai-server-backup-YYYYMMDD-HHMMSS`.
+   `config.yaml.droidshield-backup-YYYYMMDD-HHMMSS`.
 3. Write generated config.
 4. Print the backup path when a backup was created.
 
@@ -202,7 +202,7 @@ http://<selected-host-or-ip>:11434
 Minimum YAML shape:
 
 ```yaml
-name: Pro AI Server Local
+name: DroidShield Local
 version: 0.0.1
 schema: v1
 models:
@@ -237,7 +237,7 @@ commands into the phone UI.
 Generated files:
 
 - `generated/termux/bootstrap.sh`
-- `generated/termux/start-pro-ai-server.sh`
+- `generated/termux/start-droidshield.sh`
 - `generated/termux/install-models.sh`
 
 `bootstrap.sh` responsibilities:
@@ -248,7 +248,7 @@ pkg install -y proot-distro curl termux-api
 proot-distro install debian
 ```
 
-`start-pro-ai-server.sh` responsibilities:
+`start-droidshield.sh` responsibilities:
 
 ```bash
 termux-wake-lock
@@ -269,13 +269,13 @@ the Debian proot environment.
 Generate a shortcut script intended for:
 
 ```text
-~/.shortcuts/Start Pro AI Server
+~/.shortcuts/Start DroidShield
 ```
 
 The script should call:
 
 ```bash
-~/start-pro-ai-server.sh
+~/start-droidshield.sh
 ```
 
 The app should explain that the user must install Termux:Widget and add the
@@ -288,9 +288,9 @@ Tailscale is optional. USB mode remains the default.
 Supported CLI examples:
 
 ```powershell
-pro-ai-server configure-continue --mode usb
-pro-ai-server configure-continue --mode tailscale --host pro-ai-phone
-pro-ai-server configure-continue --mode tailscale --host 100.x.x.x
+droidshield configure-continue --mode usb
+droidshield configure-continue --mode tailscale --host pro-ai-phone
+droidshield configure-continue --mode tailscale --host 100.x.x.x
 ```
 
 Security rules:
@@ -306,12 +306,12 @@ Security rules:
 Add:
 
 ```powershell
-pro-ai-server diagnose
+droidshield diagnose
 ```
 
 Diagnostics should include:
 
-- Host: Python version, OS, Pro AI Server version, ADB path, IDE CLIs found.
+- Host: Python version, OS, DroidShield version, ADB path, IDE CLIs found.
 - Phone: `adb devices`, manufacturer, model, Android version, ABI, RAM, free
   storage, battery level, charging state.
 - Server: `adb forward --list`, `curl http://localhost:11434/api/tags`.
@@ -335,7 +335,7 @@ Before merging MVP implementation PRs, run:
 ```powershell
 pytest
 ruff check .
-pro-ai-server doctor
+droidshield doctor
 ```
 
 ## Suggested Implementation Order
@@ -354,11 +354,11 @@ pro-ai-server doctor
 Expected CLI commands by MVP end:
 
 ```powershell
-pro-ai-server doctor
-pro-ai-server scan
-pro-ai-server profile 8
-pro-ai-server generate-scripts --mode usb
-pro-ai-server configure-continue --mode usb
-pro-ai-server tunnel
-pro-ai-server diagnose
+droidshield doctor
+droidshield scan
+droidshield profile 8
+droidshield generate-scripts --mode usb
+droidshield configure-continue --mode usb
+droidshield tunnel
+droidshield diagnose
 ```

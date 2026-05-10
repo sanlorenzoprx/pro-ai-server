@@ -1,6 +1,6 @@
 import pytest
 
-from pro_ai_server.device_scan import (
+from droidshield.device_scan import (
     DeviceScanOutputs,
     build_device_profile_from_scan_outputs,
     build_device_scan_commands,

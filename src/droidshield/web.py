@@ -10,17 +10,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
+from urllib.request import Request, urlopen
 
-from pro_ai_server.diagnostics import build_diagnostics_report
-from pro_ai_server.ide import detect_continue_extension_status, detect_ide_clis
-from pro_ai_server.ollama import assess_ollama_server_status, build_ollama_tags_command
-from pro_ai_server.status import build_status_report
-from pro_ai_server.termux_scripts import generate_termux_scripts, write_termux_scripts
+from droidshield.diagnostics import build_diagnostics_report
+from droidshield.ide import detect_continue_extension_status, detect_ide_clis
+from droidshield.ollama import assess_ollama_server_status, build_ollama_tags_command
+from droidshield.status import build_status_report
+from droidshield.termux_scripts import generate_termux_scripts, write_termux_scripts
 
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
+DEFAULT_KNOWLEDGE_API_BASE = "http://127.0.0.1:8766"
 
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
@@ -33,7 +35,7 @@ class UiActionResult:
 
 
 def build_status_payload(api_base: str = "http://localhost:11434") -> dict[str, Any]:
-    from pro_ai_server import cli
+    from droidshield import cli
 
     adb = cli.resolve_adb()
     adb_devices_output = cli.run_optional_command([adb, "devices"]) if adb else None
@@ -60,7 +62,7 @@ def build_endpoints_payload(
     ollama_api_base: str = "http://127.0.0.1:11434",
     native_api_base: str | None = None,
 ) -> dict[str, Any]:
-    from pro_ai_server import cli
+    from droidshield import cli
 
     ollama_base = ollama_api_base.rstrip("/")
     tags_output = cli.run_optional_command(list(build_ollama_tags_command(ollama_base)))
@@ -96,17 +98,20 @@ def build_endpoints_payload(
 
 
 def create_usb_tunnel(serial: str | None = None) -> UiActionResult:
-    from pro_ai_server import cli
+    from droidshield import cli
 
     adb = cli.resolve_adb()
     if not adb:
         return UiActionResult(False, "adb was not found.")
     try:
         selected_serial = cli.select_device_serial(adb, serial or None)
-        output = cli.run_command(cli.adb_command(adb, ["forward", "tcp:11434", "tcp:11434"], selected_serial))
+        outputs = [
+            cli.run_command(cli.adb_command(adb, ["forward", "tcp:11434", "tcp:11434"], selected_serial)),
+            cli.run_command(cli.adb_command(adb, ["forward", "tcp:8766", "tcp:8766"], selected_serial)),
+        ]
     except Exception as exc:  # noqa: BLE001 - UI action should return a visible failure.
         return UiActionResult(False, str(exc))
-    return UiActionResult(True, f"USB tunnel active for {selected_serial}.", output)
+    return UiActionResult(True, f"USB tunnel active for {selected_serial}.", "\n".join(filter(None, outputs)))
 
 
 def generate_scripts_action(mode: str, profile: str, output_dir: str) -> UiActionResult:
@@ -120,21 +125,122 @@ def generate_scripts_action(mode: str, profile: str, output_dir: str) -> UiActio
 
 
 def profile_name_to_chat(profile: str) -> str:
-    from pro_ai_server.models import model_plan_for_profile
+    from droidshield.models import model_plan_for_profile
 
     return model_plan_for_profile(profile).chat_model
 
 
 def profile_name_to_autocomplete(profile: str) -> str:
-    from pro_ai_server.models import model_plan_for_profile
+    from droidshield.models import model_plan_for_profile
 
     return model_plan_for_profile(profile).autocomplete_model
 
 
 def build_diagnostics_payload() -> dict[str, str]:
-    from pro_ai_server import cli
+    from droidshield import cli
 
     return {"text": build_diagnostics_report(cli.resolve_adb()).text}
+
+
+def build_knowledge_payload(api_base: str = DEFAULT_KNOWLEDGE_API_BASE) -> dict[str, Any]:
+    base = api_base.rstrip("/")
+    try:
+        payload = _request_phone_knowledge_json(f"{base}/api/knowledge/status")
+    except OSError as exc:
+        return {
+            "ok": False,
+            "hostedOn": "phone",
+            "apiBase": base,
+            "message": f"Phone knowledge server is not reachable: {exc}",
+        }
+    payload["apiBase"] = base
+    return payload
+
+
+def trigger_phone_knowledge_ingest(api_base: str = DEFAULT_KNOWLEDGE_API_BASE) -> dict[str, Any]:
+    base = api_base.rstrip("/")
+    try:
+        return _request_phone_knowledge_json(f"{base}/api/knowledge/ingest", method="POST")
+    except OSError as exc:
+        return {"ok": False, "message": f"Phone knowledge ingest failed: {exc}"}
+
+
+def add_phone_knowledge_source(
+    filename: str,
+    content: str,
+    api_base: str = DEFAULT_KNOWLEDGE_API_BASE,
+) -> dict[str, Any]:
+    base = api_base.rstrip("/")
+    if not filename.lower().endswith(".md"):
+        return {"ok": False, "message": "Choose a markdown file ending in .md."}
+    if not content.strip():
+        return {"ok": False, "message": "The selected markdown file is empty."}
+    try:
+        return _request_phone_knowledge_json(
+            f"{base}/api/knowledge/sources",
+            method="POST",
+            body={"filename": filename, "content": content, "ingest": True},
+        )
+    except OSError as exc:
+        return {"ok": False, "message": f"Phone knowledge upload failed: {exc}"}
+
+
+def add_phone_quick_capture(
+    content: str,
+    api_base: str = DEFAULT_KNOWLEDGE_API_BASE,
+) -> dict[str, Any]:
+    base = api_base.rstrip("/")
+    if not content.strip():
+        return {"ok": False, "message": "Capture text is required."}
+    try:
+        return _request_phone_knowledge_json(
+            f"{base}/api/knowledge/captures",
+            method="POST",
+            body={"content": content},
+        )
+    except OSError as exc:
+        return {"ok": False, "message": f"Phone quick capture failed: {exc}"}
+
+
+def trigger_phone_knowledge_feedback(
+    kind: str,
+    api_base: str = DEFAULT_KNOWLEDGE_API_BASE,
+) -> dict[str, Any]:
+    base = api_base.rstrip("/")
+    if kind not in {"daily", "weekly"}:
+        return {"ok": False, "message": "Unknown feedback kind."}
+    try:
+        return _request_phone_knowledge_json(f"{base}/api/knowledge/{kind}", method="POST")
+    except OSError as exc:
+        return {"ok": False, "message": f"Phone {kind} feedback failed: {exc}"}
+
+
+def read_phone_knowledge_page(
+    path: str,
+    api_base: str = DEFAULT_KNOWLEDGE_API_BASE,
+) -> dict[str, Any]:
+    base = api_base.rstrip("/")
+    if not path.strip():
+        return {"ok": False, "message": "Page path is required."}
+    try:
+        return _request_phone_knowledge_json(f"{base}/api/knowledge/pages?path={quote(path, safe='')}")
+    except OSError as exc:
+        return {"ok": False, "message": f"Phone knowledge page read failed: {exc}"}
+
+
+def _request_phone_knowledge_json(
+    url: str,
+    *,
+    method: str = "GET",
+    body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    request = Request(url, data=data, method=method)
+    if body is not None:
+        request.add_header("content-type", "application/json")
+    with urlopen(request, timeout=4) as response:  # noqa: S310 - local phone-forwarded control API.
+        payload = json.loads(response.read().decode("utf-8"))
+    return payload if isinstance(payload, dict) else {"ok": False, "message": "Unexpected phone response."}
 
 
 def serve_ui(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, *, open_browser: bool = True) -> str:
@@ -143,7 +249,7 @@ def serve_ui(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, *, open_browser
     if open_browser:
         threading.Timer(0.3, lambda: webbrowser.open(url)).start()
     try:
-        print(f"Pro AI Server UI running at {url}")
+        print(f"DroidShield UI running at {url}")
         server.serve_forever()
     except KeyboardInterrupt:
         pass
@@ -153,7 +259,7 @@ def serve_ui(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, *, open_browser
 
 
 class UiRequestHandler(BaseHTTPRequestHandler):
-    server_version = "ProAiServerUI/0.1"
+    server_version = "DroidShieldUI/0.1"
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - stdlib signature.
         return
@@ -174,6 +280,17 @@ class UiRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/diagnostics":
             self._send_json(build_diagnostics_payload())
             return
+        if parsed.path == "/api/knowledge":
+            query = parse_qs(parsed.query)
+            api_base = _first_query_value(query, "apiBase", DEFAULT_KNOWLEDGE_API_BASE)
+            self._send_json(build_knowledge_payload(api_base))
+            return
+        if parsed.path == "/api/knowledge/page":
+            query = parse_qs(parsed.query)
+            api_base = _first_query_value(query, "apiBase", DEFAULT_KNOWLEDGE_API_BASE)
+            path = _first_query_value(query, "path", "")
+            self._send_json(read_phone_knowledge_page(path, api_base))
+            return
         self._send_static(parsed.path)
 
     def do_POST(self) -> None:
@@ -187,6 +304,26 @@ class UiRequestHandler(BaseHTTPRequestHandler):
             profile = str(body.get("profile") or "professional")
             output_dir = str(body.get("outputDir") or ".")
             self._send_json(asdict(generate_scripts_action(mode, profile, output_dir)))
+            return
+        if parsed.path == "/api/actions/knowledge-ingest":
+            api_base = str(body.get("apiBase") or DEFAULT_KNOWLEDGE_API_BASE)
+            self._send_json(trigger_phone_knowledge_ingest(api_base))
+            return
+        if parsed.path == "/api/actions/knowledge-add-source":
+            filename = str(body.get("filename") or "")
+            content = str(body.get("content") or "")
+            api_base = str(body.get("apiBase") or DEFAULT_KNOWLEDGE_API_BASE)
+            self._send_json(add_phone_knowledge_source(filename, content, api_base))
+            return
+        if parsed.path == "/api/actions/knowledge-quick-capture":
+            content = str(body.get("content") or "")
+            api_base = str(body.get("apiBase") or DEFAULT_KNOWLEDGE_API_BASE)
+            self._send_json(add_phone_quick_capture(content, api_base))
+            return
+        if parsed.path == "/api/actions/knowledge-feedback":
+            kind = str(body.get("kind") or "")
+            api_base = str(body.get("apiBase") or DEFAULT_KNOWLEDGE_API_BASE)
+            self._send_json(trigger_phone_knowledge_feedback(kind, api_base))
             return
         self._send_json({"ok": False, "message": "Unknown action."}, HTTPStatus.NOT_FOUND)
 
@@ -205,7 +342,7 @@ class UiRequestHandler(BaseHTTPRequestHandler):
         if ".." in Path(relative).parts:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
-        resource = files("pro_ai_server") / "ui" / relative
+        resource = files("droidshield") / "ui" / relative
         if not resource.is_file():
             self.send_error(HTTPStatus.NOT_FOUND)
             return

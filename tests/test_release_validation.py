@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from pro_ai_server.packaging import REQUIRED_WINDOWS_PLATFORM_TOOL_FILES
-from pro_ai_server.release_validation import (
+from droidshield.packaging import REQUIRED_WINDOWS_PLATFORM_TOOL_FILES
+from droidshield.release_validation import (
     ci_includes_required_commands,
     pyproject_includes_embedded_tools_package_data,
     validate_release_layout,
@@ -23,7 +23,7 @@ def test_release_validation_reports_missing_package_data_entry(tmp_path):
     (tmp_path / "pyproject.toml").write_text(
         """
 [tool.setuptools.package-data]
-pro_ai_server = ["py.typed"]
+droidshield = ["py.typed"]
 """.strip(),
         encoding="utf-8",
     )
@@ -80,7 +80,7 @@ def test_fastboot_is_not_required_by_release_validation(tmp_path):
 def test_pyproject_package_data_helper_finds_embedded_tools_entry():
     pyproject_text = """
 [tool.setuptools.package-data]
-pro_ai_server = [
+droidshield = [
   "embedded-tools/**",
 ]
 """
@@ -96,7 +96,7 @@ def test_ci_helper_requires_ruff_and_pytest():
 def write_valid_repo_tree(root: Path) -> None:
     for platform_tools_dir in (
         root / "embedded-tools" / "windows" / "platform-tools",
-        root / "src" / "pro_ai_server" / "embedded-tools" / "windows" / "platform-tools",
+        root / "src" / "droidshield" / "embedded-tools" / "windows" / "platform-tools",
     ):
         platform_tools_dir.mkdir(parents=True)
         for file_name in REQUIRED_WINDOWS_PLATFORM_TOOL_FILES:
@@ -105,7 +105,7 @@ def write_valid_repo_tree(root: Path) -> None:
     (root / "pyproject.toml").write_text(
         """
 [tool.setuptools.package-data]
-pro_ai_server = ["embedded-tools/**"]
+droidshield = ["embedded-tools/**"]
 """.strip(),
         encoding="utf-8",
     )

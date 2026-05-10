@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from pro_ai_server.continue_config import api_base_for_mode, exposure_warnings
-from pro_ai_server.models import ModelPlan, model_plan_for_profile, model_plan_for_ram
-from pro_ai_server.script_delivery import Command, build_script_delivery_plan
-from pro_ai_server.termux_scripts import DEFAULT_SCRIPT_DIR, generate_termux_scripts
+from droidshield.continue_config import api_base_for_mode, exposure_warnings
+from droidshield.models import ModelPlan, model_plan_for_profile, model_plan_for_ram
+from droidshield.script_delivery import Command, build_script_delivery_plan
+from droidshield.termux_scripts import DEFAULT_SCRIPT_DIR, generate_termux_scripts
 
 
 VALID_SETUP_MODES = {"usb", "lan", "tailscale"}

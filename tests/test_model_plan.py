@@ -1,6 +1,6 @@
 import pytest
 
-from pro_ai_server.models import ModelPlan, model_plan_for_profile, model_plan_for_ram
+from droidshield.models import ModelPlan, model_plan_for_profile, model_plan_for_ram
 
 
 def test_lightweight_model_plan():

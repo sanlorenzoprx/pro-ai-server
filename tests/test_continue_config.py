@@ -2,13 +2,13 @@ from datetime import datetime
 
 import yaml
 
-from pro_ai_server.continue_config import (
+from droidshield.continue_config import (
     api_base_for_mode,
     exposure_warnings,
     render_continue_config_yaml,
     write_continue_config,
 )
-from pro_ai_server.models import model_plan_for_profile
+from droidshield.models import model_plan_for_profile
 
 
 def test_render_continue_config_yaml_uses_pyyaml_shape():
@@ -17,7 +17,7 @@ def test_render_continue_config_yaml_uses_pyyaml_shape():
     rendered = render_continue_config_yaml(plan)
     parsed = yaml.safe_load(rendered)
 
-    assert parsed["name"] == "Pro AI Server Local"
+    assert parsed["name"] == "DroidShield Local"
     assert parsed["schema"] == "v1"
     assert parsed["models"][0]["name"] == "Pro AI Chat"
     assert parsed["models"][0]["model"] == "qwen2.5-coder:3b"
@@ -26,7 +26,7 @@ def test_render_continue_config_yaml_uses_pyyaml_shape():
     assert parsed["models"][1]["name"] == "Pro AI Autocomplete"
     assert parsed["models"][1]["model"] == "qwen2.5-coder:1.5b-base"
     assert parsed["models"][1]["roles"] == ["autocomplete"]
-    assert rendered.startswith("name: Pro AI Server Local\n")
+    assert rendered.startswith("name: DroidShield Local\n")
 
 
 def test_write_continue_config_creates_directory(tmp_path):
@@ -51,7 +51,7 @@ def test_write_continue_config_backs_up_existing_config(tmp_path):
 
     result = write_continue_config(plan, continue_dir=continue_dir, now=now)
 
-    assert result.backup_path == continue_dir / "config.yaml.pro-ai-server-backup-20260502-131415"
+    assert result.backup_path == continue_dir / "config.yaml.droidshield-backup-20260502-131415"
     assert result.backup_path.read_text(encoding="utf-8") == "existing: true\n"
     assert "qwen2.5-coder:3b" in config_path.read_text(encoding="utf-8")
 

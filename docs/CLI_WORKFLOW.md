@@ -5,7 +5,7 @@ This is the current MVP flow for Windows hosts. Commands assume PowerShell from 
 ## 1. Check the Host
 
 ```powershell
-pro-ai-server doctor
+droidshield doctor
 ```
 
 `doctor` reports Python, Continue-compatible IDE CLIs, and ADB availability. Release builds should include bundled ADB at `embedded-tools/windows/platform-tools/adb.exe`; the CLI prefers that bundled ADB and falls back to system `adb` on `PATH`.
@@ -17,7 +17,7 @@ Fastboot is not used in MVP behavior.
 ## 2. Validate Bundled Platform Tools
 
 ```powershell
-pro-ai-server validate-platform-tools
+droidshield validate-platform-tools
 ```
 
 This validates the Windows ADB runtime layouts and required files:
@@ -33,7 +33,7 @@ Run this after updating bundled platform-tools, before publishing a release, or 
 ## 3. Validate Release Readiness
 
 ```powershell
-pro-ai-server validate-release
+droidshield validate-release
 ```
 
 Run `validate-release` before tagging or handing off a Windows release build. It checks that bundled ADB runtime files are present in the source and packaged layouts, that embedded tool package data is included, and that CI still runs the required gates.
@@ -43,13 +43,13 @@ Run `validate-release` before tagging or handing off a Windows release build. It
 Connect the phone over USB, enable USB debugging, accept the Android authorization prompt, then run:
 
 ```powershell
-pro-ai-server scan
+droidshield scan
 ```
 
 If more than one device is connected:
 
 ```powershell
-pro-ai-server scan --serial <device-serial>
+droidshield scan --serial <device-serial>
 ```
 
 The scan reads Android version, ABI, RAM, storage, battery, and model information over ADB, then recommends a model profile.
@@ -57,7 +57,7 @@ The scan reads Android version, ABI, RAM, storage, battery, and model informatio
 ## 5. Check Termux Readiness
 
 ```powershell
-pro-ai-server termux-check
+droidshield termux-check
 ```
 
 Run `termux-check` after the phone is visible to ADB and before pushing scripts. It verifies that Termux is installed, Termux:API is installed, and the Termux home directory has been initialized by opening Termux at least once.
@@ -65,21 +65,21 @@ Run `termux-check` after the phone is visible to ADB and before pushing scripts.
 With multiple devices:
 
 ```powershell
-pro-ai-server termux-check --serial <device-serial>
+droidshield termux-check --serial <device-serial>
 ```
 
 ## 6. Generate Termux Scripts
 
 ```powershell
-pro-ai-server generate-scripts --mode usb
+droidshield generate-scripts --mode usb
 ```
 
 This writes inspectable files under `generated/termux`, including:
 
 - `bootstrap.sh`
-- `start-pro-ai-server.sh`
+- `start-droidshield.sh`
 - `install-models.sh`
-- `.shortcuts/Start Pro AI Server`
+- `.shortcuts/Start DroidShield`
 - `ANDROID_OPTIMIZATION_CHECKLIST.txt`
 - `TERMUX_WIDGET_INSTRUCTIONS.txt`
 
@@ -88,37 +88,37 @@ USB mode binds Ollama to `127.0.0.1:11434`. LAN and Tailscale script modes bind 
 ## 7. Push Scripts to Termux
 
 ```powershell
-pro-ai-server push-scripts
+droidshield push-scripts
 ```
 
 With multiple devices:
 
 ```powershell
-pro-ai-server push-scripts --serial <device-serial>
+droidshield push-scripts --serial <device-serial>
 ```
 
 The CLI uses `adb push` to copy generated files to the Termux home directory and creates the `.shortcuts` folder. After pushing, run the printed commands inside Termux.
 
-Termux:Widget still requires manual installation and placement: install Termux:Widget on Android, add the generated `Start Pro AI Server` shortcut to `~/.shortcuts`, keep the generated icon at `~/.shortcuts/icons/Start Pro AI Server.png`, then place the widget/shortcut on the Android home screen.
+Termux:Widget still requires manual installation and placement: install Termux:Widget on Android, add the generated `Start DroidShield` shortcut to `~/.shortcuts`, keep the generated icon at `~/.shortcuts/icons/Start DroidShield.png`, then place the widget/shortcut on the Android home screen.
 
 ## 8. Configure Continue
 
 USB is the default and safest MVP mode:
 
 ```powershell
-pro-ai-server configure-continue --mode usb
+droidshield configure-continue --mode usb
 ```
 
-This writes `%USERPROFILE%\.continue\config.yaml` for an Ollama-compatible API at `http://localhost:11434`. If a Continue config already exists, the CLI backs it up first with a `config.yaml.pro-ai-server-backup-YYYYMMDD-HHMMSS` filename.
+This writes `%USERPROFILE%\.continue\config.yaml` for an Ollama-compatible API at `http://localhost:11434`. If a Continue config already exists, the CLI backs it up first with a `config.yaml.droidshield-backup-YYYYMMDD-HHMMSS` filename.
 
 Cursor uses this same Continue configuration path when the Continue extension is installed, so no separate Cursor-specific config file is required for the MVP flow.
 
 LAN and Tailscale require an explicit host:
 
 ```powershell
-pro-ai-server configure-continue --mode lan --host 192.168.1.50
-pro-ai-server configure-continue --mode tailscale --host pro-ai-phone
-pro-ai-server configure-continue --mode tailscale --host 100.x.x.x
+droidshield configure-continue --mode lan --host 192.168.1.50
+droidshield configure-continue --mode tailscale --host pro-ai-phone
+droidshield configure-continue --mode tailscale --host 100.x.x.x
 ```
 
 LAN mode exposes Ollama to devices on the local network. Tailscale mode should use a private Tailscale hostname or `100.x.x.x` IP address.
@@ -128,7 +128,7 @@ LAN mode exposes Ollama to devices on the local network. Tailscale mode should u
 Use Tailscale when the phone and laptop should keep a stable private address without relying on the same Wi-Fi router:
 
 ```powershell
-pro-ai-server setup-tailscale
+droidshield setup-tailscale
 ```
 
 The command verifies the Windows host client with `tailscale version`, checks the connected Android phone for package `com.tailscale.ipn`, and opens the Tailscale Play Store page on the phone when the Android app is missing.
@@ -136,31 +136,31 @@ The command verifies the Windows host client with `tailscale version`, checks th
 To install the Windows client with `winget`:
 
 ```powershell
-pro-ai-server setup-tailscale --install-host --yes
+droidshield setup-tailscale --install-host --yes
 ```
 
 To install a local Android APK over ADB:
 
 ```powershell
-pro-ai-server setup-tailscale --android-apk C:\path\to\tailscale.apk --yes
+droidshield setup-tailscale --android-apk C:\path\to\tailscale.apk --yes
 ```
 
 Android Play Store installation and Tailscale sign-in still require user approval on the device. After Tailscale is installed and signed in on both devices, configure Continue with the phone's private Tailscale hostname or `100.x.x.x` IP:
 
 ```powershell
-pro-ai-server configure-continue --mode tailscale --host pro-ai-phone
+droidshield configure-continue --mode tailscale --host pro-ai-phone
 ```
 
 ## 10. Create the USB Tunnel
 
 ```powershell
-pro-ai-server tunnel
+droidshield tunnel
 ```
 
 With multiple devices:
 
 ```powershell
-pro-ai-server tunnel --serial <device-serial>
+droidshield tunnel --serial <device-serial>
 ```
 
 This requests:
@@ -176,7 +176,7 @@ After the tunnel is active, Continue can use `http://localhost:11434` from the W
 Plan mode is the default:
 
 ```powershell
-pro-ai-server setup
+droidshield setup
 ```
 
 The plan prints the actions and safety notes without writing Continue config, pushing files, or creating the tunnel.
@@ -184,7 +184,7 @@ The plan prints the actions and safety notes without writing Continue config, pu
 To execute the planned MVP actions:
 
 ```powershell
-pro-ai-server setup --execute --yes
+droidshield setup --execute --yes
 ```
 
 `--yes` is required because setup can write Continue config and can change network exposure when LAN or Tailscale mode is selected.
@@ -192,17 +192,17 @@ pro-ai-server setup --execute --yes
 Useful variants:
 
 ```powershell
-pro-ai-server setup --mode usb --push-scripts --execute --yes
-pro-ai-server setup --mode tailscale --host pro-ai-phone
-pro-ai-server setup --mode lan --host 192.168.1.50 --no-tunnel
+droidshield setup --mode usb --push-scripts --execute --yes
+droidshield setup --mode tailscale --host pro-ai-phone
+droidshield setup --mode lan --host 192.168.1.50 --no-tunnel
 ```
 
 ## 12. Check Live Status
 
 ```powershell
-pro-ai-server server-endpoints
-pro-ai-server status
-pro-ai-server ui
+droidshield server-endpoints
+droidshield status
+droidshield ui
 ```
 
 `server-endpoints` prints the local access URLs for the Termux/Ollama lane on `127.0.0.1:11434`; by default it also probes that forwarded endpoint and lists live models when it is reachable. If you have separately forwarded a native Android llama.cpp server, pass `--native-api-base` to display and probe that optional lane. `status` prints a concise readiness view for the connected phone, USB tunnel, Ollama `/api/tags`, and Continue-ready IDE integration. `ui` starts the local dashboard at `http://127.0.0.1:8765` for the same daily checks, endpoint probes, USB tunnel action, Termux script generation, and diagnostics. These commands are intended for quick daily checks before opening Cursor, VS Code, VSCodium, or Windsurf.
@@ -210,14 +210,14 @@ pro-ai-server ui
 Use a custom API base for LAN or Tailscale checks:
 
 ```powershell
-pro-ai-server status --api-base http://pro-ai-phone:11434
+droidshield status --api-base http://pro-ai-phone:11434
 ```
 
 ## 13. Capture Diagnostics
 
 ```powershell
-pro-ai-server diagnose
-pro-ai-server diagnose --output diagnostics.txt
+droidshield diagnose
+droidshield diagnose --output diagnostics.txt
 ```
 
 Diagnostics include host details, ADB path, connected phone state, selected hardware facts, `adb forward --list`, IDE CLI discovery, and a local Ollama tags check. Reports redact user-profile paths where possible.

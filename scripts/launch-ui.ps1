@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $url = "http://127.0.0.1:$Port/"
 
-function Test-ProAiServerUi {
+function Test-DroidShieldUi {
     try {
         $response = Invoke-WebRequest -UseBasicParsing $url -TimeoutSec 1
         return $response.StatusCode -eq 200
@@ -16,15 +16,15 @@ function Test-ProAiServerUi {
     }
 }
 
-if (-not (Test-ProAiServerUi)) {
+if (-not (Test-DroidShieldUi)) {
     Start-Process -FilePath "C:\Windows\py.exe" `
-        -ArgumentList @("-3.11", "-m", "pro_ai_server.cli", "ui", "--port", "$Port", "--no-open") `
+        -ArgumentList @("-3.11", "-m", "droidshield.cli", "ui", "--port", "$Port", "--no-open") `
         -WorkingDirectory $repoRoot `
         -WindowStyle Hidden
 
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Milliseconds 250
-        if (Test-ProAiServerUi) {
+        if (Test-DroidShieldUi) {
             break
         }
     }

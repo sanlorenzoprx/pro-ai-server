@@ -1,5 +1,5 @@
 {
-  "name": "Pro AI Server",
+  "name": "DroidShield",
   "short_name": "Pro AI",
   "description": "Local dashboard for an Android-hosted AI server.",
   "start_url": "/",
@@ -9,7 +9,7 @@
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "/pro-ai-server.png",
+      "src": "/droidshield.png",
       "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"

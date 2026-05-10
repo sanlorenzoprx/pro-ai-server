@@ -1,0 +1,22 @@
+{
+  "name": "default",
+  "allowed_commands": ["git", "npm", "pnpm", "node", "python", "pytest", "pip", "ruff"],
+  "blocked_commands": ["sudo", "su", "rm -rf /", "mkfs", "dd", "shutdown", "reboot"],
+  "blocked_paths": [
+    "~/.ssh",
+    "~/.aws",
+    "~/.config/gcloud",
+    "/etc/passwd",
+    "/data/data"
+  ],
+  "network_allowlist": [
+    "github.com",
+    "registry.npmjs.org",
+    "pypi.org",
+    "files.pythonhosted.org"
+  ],
+  "max_runtime_seconds": 300,
+  "max_output_bytes": 2000000,
+  "allow_shell": true,
+  "require_working_directory": true
+}

@@ -1,4 +1,4 @@
-from pro_ai_server.termux_readiness import (
+from droidshield.termux_readiness import (
     TERMUX_API_PACKAGE,
     TERMUX_HOME,
     TERMUX_PACKAGE,

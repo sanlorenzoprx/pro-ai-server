@@ -19,6 +19,6 @@ jobs:
       - name: Test
         run: pytest
       - name: Validate release
-        run: pro-ai-server validate-release
+        run: droidshield validate-release
       - name: Build wheel
         run: python -m pip wheel . --no-deps --wheel-dir dist

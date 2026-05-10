@@ -1,13 +1,13 @@
 from typer.testing import CliRunner
 
-from pro_ai_server import cli
-from pro_ai_server.continue_config import ContinueConfigWriteResult
-from pro_ai_server.diagnostics import DiagnosticsReport
-from pro_ai_server.ide import IdeCli, IdeExtensionStatus
-from pro_ai_server.ollama import OllamaServerStatus
-from pro_ai_server.release_validation import ReleaseValidationIssue, ReleaseValidationResult
-from pro_ai_server.status import ProAiStatus, StatusItem
-from pro_ai_server import web
+from droidshield import cli
+from droidshield.continue_config import ContinueConfigWriteResult
+from droidshield.diagnostics import DiagnosticsReport
+from droidshield.ide import IdeCli, IdeExtensionStatus
+from droidshield.ollama import OllamaServerStatus
+from droidshield.release_validation import ReleaseValidationIssue, ReleaseValidationResult
+from droidshield.status import ProAiStatus, StatusItem
+from droidshield import web
 
 
 def test_setup_prints_plan_without_executing_actions():
@@ -270,6 +270,39 @@ def test_ui_command_launches_dashboard(monkeypatch):
     assert calls == [("127.0.0.1", 8765, False)]
 
 
+def test_knowledge_add_uploads_markdown_file(monkeypatch, tmp_path):
+    runner = CliRunner()
+    source = tmp_path / "note.md"
+    source.write_text("# Note", encoding="utf-8")
+    calls = []
+
+    def fake_add(filename, content, api_base):
+        calls.append((filename, content, api_base))
+        return {"ok": True, "path": "raw/note.md", "ingest": {"page": "wiki/sources/note.md"}}
+
+    import droidshield.web as web_module
+
+    monkeypatch.setattr(web_module, "add_phone_knowledge_source", fake_add)
+
+    result = runner.invoke(cli.app, ["knowledge-add", str(source)])
+
+    assert result.exit_code == 0
+    assert calls == [("note.md", "# Note", "http://127.0.0.1:8766")]
+    assert "Added source" in result.output
+    assert "wiki/sources/note.md" in result.output
+
+
+def test_knowledge_add_rejects_non_markdown_file(tmp_path):
+    runner = CliRunner()
+    source = tmp_path / "note.txt"
+    source.write_text("text", encoding="utf-8")
+
+    result = runner.invoke(cli.app, ["knowledge-add", str(source)])
+
+    assert result.exit_code == 1
+    assert "Only .md files" in result.output
+
+
 def test_doctor_reports_missing_continue_extension(monkeypatch):
     runner = CliRunner()
 
@@ -371,7 +404,7 @@ def test_status_prints_concise_readiness_report(monkeypatch):
     result = runner.invoke(cli.app, ["status"])
 
     assert result.exit_code == 0
-    assert "Pro AI Server Status" in result.output
+    assert "DroidShield Status" in result.output
     assert "OK Phone: connected (ABC123)" in result.output
     assert "OK Ollama: responding on /api/tags" in result.output
 
